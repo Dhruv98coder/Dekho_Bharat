@@ -1,7 +1,7 @@
 /* =========================================================
    DEKHOCHAT
    GoPlan AI Travel Assistant
-   CLEAN VERSION
+   CLEAN + FIXED VERSION
 ========================================================= */
 
 
@@ -15,14 +15,21 @@ let currentPlaceData = null;
 
 /* =========================================================
    API URLS
+   Django chatbot app is mounted at /shristi/
 ========================================================= */
 
 const API = {
-
-    places: "/chatbot/places/",
-    chat: "/chatbot/api/"
-
+    places: "/shristi/places/",
+    chat: "/shristi/api/"
 };
+
+
+/* =========================================================
+   DEFAULT IMAGE
+========================================================= */
+
+const DEFAULT_PLACE_IMAGE =
+    "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1000&q=85";
 
 
 /* =========================================================
@@ -34,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("DekhoChat initialized.");
 
     loadAllPlaces();
+    initializeSearch();
 
     window.addEventListener("resize", function () {
 
@@ -55,8 +63,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 /* =========================================================
-   LOAD ALL 81 PLACES
-   Django -> /chatbot/places/
+   LOAD ALL PLACES
+   Django -> /shristi/places/
 ========================================================= */
 
 async function loadAllPlaces() {
@@ -70,7 +78,18 @@ async function loadAllPlaces() {
 
     try {
 
-        const response = await fetch(API.places);
+        console.log("Loading destinations...");
+
+
+        const response =
+            await fetch(API.places, {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json"
+                },
+                credentials: "same-origin"
+            });
+
 
         if (!response.ok) {
 
@@ -81,7 +100,9 @@ async function loadAllPlaces() {
         }
 
 
-        const data = await response.json();
+        const data =
+            await response.json();
+
 
         console.log(
             "PLACES API RESPONSE:",
@@ -92,7 +113,8 @@ async function loadAllPlaces() {
         if (!data.success) {
 
             throw new Error(
-                data.error || "Could not load places."
+                data.error ||
+                "Could not load places."
             );
 
         }
@@ -109,69 +131,16 @@ async function loadAllPlaces() {
         );
 
 
-        /*
-        -----------------------------------------------------
-        SELECT DROPDOWN
-        -----------------------------------------------------
-        */
-
-        if (selector) {
-
-            selector.innerHTML = "";
-
-            const defaultOption =
-                document.createElement("option");
-
-            defaultOption.value = "";
-
-            defaultOption.textContent =
-                "Select a place from 81 destinations...";
-
-            selector.appendChild(
-                defaultOption
-            );
+        populatePlaceDropdown(
+            selector,
+            places
+        );
 
 
-            places.forEach(function (place) {
-
-                const option =
-                    document.createElement("option");
-
-                option.value =
-                    place.name || "";
-
-                option.textContent =
-                    place.name || "Unknown Place";
-
-                selector.appendChild(
-                    option
-                );
-
-            });
-
-        }
-
-
-        /*
-        -----------------------------------------------------
-        PLACE CARDS
-        -----------------------------------------------------
-        */
-
-        if (grid) {
-
-            grid.innerHTML = "";
-
-            places.forEach(function (place) {
-
-                const card =
-                    createPlaceCard(place);
-
-                grid.appendChild(card);
-
-            });
-
-        }
+        populatePlaceGrid(
+            grid,
+            places
+        );
 
 
     } catch (error) {
@@ -182,21 +151,136 @@ async function loadAllPlaces() {
         );
 
 
-        if (grid) {
-
-            grid.innerHTML = `
-                <div class="place-load-error">
-                    ⚠️ Unable to load destinations.
-                    <br>
-                    <small>
-                        ${escapeHTML(error.message)}
-                    </small>
-                </div>
-            `;
-
-        }
+        showPlaceLoadError(
+            grid,
+            error
+        );
 
     }
+
+}
+
+
+/* =========================================================
+   POPULATE PLACE DROPDOWN
+========================================================= */
+
+function populatePlaceDropdown(
+    selector,
+    places
+) {
+
+    if (!selector) {
+        return;
+    }
+
+
+    selector.innerHTML = "";
+
+
+    const defaultOption =
+        document.createElement("option");
+
+
+    defaultOption.value = "";
+
+
+    defaultOption.textContent =
+        `Select a place from ${places.length || 81} destinations...`;
+
+
+    selector.appendChild(
+        defaultOption
+    );
+
+
+    places.forEach(function (place) {
+
+        const option =
+            document.createElement("option");
+
+
+        option.value =
+            place.name || "";
+
+
+        option.textContent =
+            place.name || "Unknown Place";
+
+
+        selector.appendChild(
+            option
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   POPULATE PLACE GRID
+========================================================= */
+
+function populatePlaceGrid(
+    grid,
+    places
+) {
+
+    if (!grid) {
+        return;
+    }
+
+
+    grid.innerHTML = "";
+
+
+    places.forEach(function (place) {
+
+        const card =
+            createPlaceCard(place);
+
+
+        grid.appendChild(
+            card
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   PLACE LOAD ERROR
+========================================================= */
+
+function showPlaceLoadError(
+    grid,
+    error
+) {
+
+    if (!grid) {
+        return;
+    }
+
+
+    grid.innerHTML = `
+
+        <div class="place-load-error">
+
+            ⚠️ Unable to load destinations.
+
+            <br>
+
+            <small>
+                ${escapeHTML(
+                    error?.message ||
+                    "Unknown error"
+                )}
+            </small>
+
+        </div>
+
+    `;
 
 }
 
@@ -210,47 +294,67 @@ function createPlaceCard(place) {
     const article =
         document.createElement("article");
 
+
     article.className =
         "place-card";
 
 
+    article.dataset.placeName =
+        place.name || "";
+
+
     article.onclick = function () {
 
-        selectPlace(place.name);
+        selectPlace(
+            place.name
+        );
 
     };
 
 
-    /*
-    ---------------------------------------------------------
-    IMAGE
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       IMAGE
+    ----------------------------------------------------- */
 
     let image = "";
 
+
     if (
-        place.images &&
         Array.isArray(place.images) &&
         place.images.length > 0
     ) {
 
-        image = place.images[0];
+        image =
+            place.images.find(
+                img =>
+                    typeof img === "string" &&
+                    img.trim() !== ""
+            ) || "";
 
     }
 
-
-    /*
-    fallback image
-    */
 
     if (!image) {
 
         image =
-            "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=900&q=85";
+            place.image_url ||
+            place.image ||
+            "";
 
     }
 
+
+    if (!image) {
+
+        image =
+            DEFAULT_PLACE_IMAGE;
+
+    }
+
+
+    /* -----------------------------------------------------
+       BASIC DATA
+    ----------------------------------------------------- */
 
     const category =
         place.category ||
@@ -269,14 +373,21 @@ function createPlaceCard(place) {
         "Explore this destination with DekhoChat.";
 
 
+    const safeDescription =
+        String(description);
+
+
     article.innerHTML = `
 
         <div class="place-image-wrapper">
 
             <img
                 src="${escapeAttribute(image)}"
-                alt="${escapeAttribute(place.name)}"
-                onerror="this.src='https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=900&q=85';"
+                alt="${escapeAttribute(
+                    place.name || "Place"
+                )}"
+                loading="lazy"
+                onerror="this.onerror=null;this.src='${DEFAULT_PLACE_IMAGE}'"
             >
 
             <span class="place-category">
@@ -289,12 +400,18 @@ function createPlaceCard(place) {
         <div class="place-card-content">
 
             <h4>
-                ${escapeHTML(place.name)}
+                ${escapeHTML(
+                    place.name || "Unknown Place"
+                )}
             </h4>
+
 
             <p>
                 ${escapeHTML(
-                    description.substring(0, 140)
+                    safeDescription.substring(
+                        0,
+                        140
+                    )
                 )}
             </p>
 
@@ -332,6 +449,7 @@ function createPlaceCard(place) {
 
 /* =========================================================
    SELECT PLACE
+   Django -> /shristi/place/<place_name>/
 ========================================================= */
 
 async function selectPlace(placeName) {
@@ -347,19 +465,20 @@ async function selectPlace(placeName) {
     );
 
 
-    /*
-    ---------------------------------------------------------
-    GET PLACE DATA FROM DJANGO
-    ---------------------------------------------------------
-    */
-
     try {
 
         const response =
             await fetch(
-                "/chatbot/place/" +
+                "/shristi/place/" +
                 encodeURIComponent(placeName) +
-                "/"
+                "/",
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    credentials: "same-origin"
+                }
             );
 
 
@@ -376,6 +495,12 @@ async function selectPlace(placeName) {
             await response.json();
 
 
+        console.log(
+            "PLACE API RESPONSE:",
+            result
+        );
+
+
         if (!result.success) {
 
             throw new Error(
@@ -388,6 +513,7 @@ async function selectPlace(placeName) {
 
         currentPlace =
             result.place.name;
+
 
         currentPlaceData =
             result.place;
@@ -408,10 +534,35 @@ async function selectPlace(placeName) {
 
         /*
         -----------------------------------------------------
-        FALLBACK:
-        Find place from already loaded cards/dropdown
+        FALLBACK TO ALREADY LOADED CARD DATA
         -----------------------------------------------------
         */
+
+        const fallbackPlace =
+            findPlaceFromCard(
+                placeName
+            );
+
+
+        if (fallbackPlace) {
+
+            currentPlace =
+                fallbackPlace.name;
+
+
+            currentPlaceData =
+                fallbackPlace;
+
+
+            displaySelectedPlace(
+                fallbackPlace
+            );
+
+
+            return;
+
+        }
+
 
         showBotMessage(
             "Unable to load this destination. " +
@@ -424,17 +575,86 @@ async function selectPlace(placeName) {
 
 
 /* =========================================================
+   FIND PLACE FROM EXISTING CARD
+========================================================= */
+
+function findPlaceFromCard(
+    placeName
+) {
+
+    const cards =
+        document.querySelectorAll(
+            ".place-card"
+        );
+
+
+    for (
+        const card of cards
+    ) {
+
+        const cardName =
+            card
+                .querySelector("h4")
+                ?.textContent
+                ?.trim();
+
+
+        if (
+            cardName &&
+            cardName.toLowerCase() ===
+                String(placeName)
+                    .toLowerCase()
+                    .trim()
+        ) {
+
+            return {
+                name: cardName,
+
+                category:
+                    card
+                        .querySelector(
+                            ".place-category"
+                        )
+                        ?.textContent
+                        ?.trim() || "",
+
+                description:
+                    card
+                        .querySelector(
+                            ".place-card-content p"
+                        )
+                        ?.textContent
+                        ?.trim() || "",
+
+                location: ""
+            };
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
    SELECT PLACE FROM DROPDOWN
 ========================================================= */
 
-function selectPlaceFromDropdown(placeName) {
+function selectPlaceFromDropdown(
+    placeName
+) {
 
     if (!placeName) {
         return;
     }
 
 
-    selectPlace(placeName);
+    selectPlace(
+        placeName
+    );
 
 }
 
@@ -453,15 +673,14 @@ function displaySelectedPlace(data) {
     currentPlace =
         data.name;
 
+
     currentPlaceData =
         data;
 
 
-    /*
-    ---------------------------------------------------------
-    UPDATE DROPDOWN
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       UPDATE DROPDOWN
+    ----------------------------------------------------- */
 
     const selector =
         document.getElementById(
@@ -477,11 +696,9 @@ function displaySelectedPlace(data) {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    SELECTED PLACE AREA
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       SELECTED PLACE AREA
+    ----------------------------------------------------- */
 
     const selectedArea =
         document.getElementById(
@@ -511,11 +728,9 @@ function displaySelectedPlace(data) {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    RIGHT DETAILS PANEL
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       RIGHT DETAILS PANEL
+    ----------------------------------------------------- */
 
     const emptyState =
         document.getElementById(
@@ -562,21 +777,22 @@ function displaySelectedPlace(data) {
     setText(
         "panel-location",
         data.location ||
-        data.address
+        data.address ||
+        "Delhi"
     );
 
 
     setText(
         "panel-rating",
-        data.rating
-            ? data.rating
-            : "Not available"
+        data.rating ||
+        "Not available"
     );
 
 
     setText(
         "panel-desc",
-        data.description
+        data.description ||
+        "Information unavailable."
     );
 
 
@@ -588,18 +804,16 @@ function displaySelectedPlace(data) {
     );
 
 
-    /*
-    ---------------------------------------------------------
-    ENTRY FEE
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       ENTRY FEE
+    ----------------------------------------------------- */
 
     let fee = "";
 
 
     if (data.entry_fee_indian) {
 
-        fee +=
+        fee =
             "Indian: " +
             data.entry_fee_indian;
 
@@ -612,6 +826,7 @@ function displaySelectedPlace(data) {
             fee += " | ";
         }
 
+
         fee +=
             "Foreign: " +
             data.entry_fee_foreigner;
@@ -622,6 +837,7 @@ function displaySelectedPlace(data) {
     if (!fee) {
 
         fee =
+            data.entry_fee ||
             "Not available";
 
     }
@@ -633,29 +849,17 @@ function displaySelectedPlace(data) {
     );
 
 
-    /*
-    ---------------------------------------------------------
-    MAIN IMAGE
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       IMAGES
+    ----------------------------------------------------- */
 
     updateMainImage(data);
-
-
-    /*
-    ---------------------------------------------------------
-    5 IMAGE GALLERY
-    ---------------------------------------------------------
-    */
-
     updateImageGallery(data);
 
 
-    /*
-    ---------------------------------------------------------
-    SHOW ACTION PANEL
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       ACTION PANEL
+    ----------------------------------------------------- */
 
     const actionPanel =
         document.getElementById(
@@ -671,11 +875,9 @@ function displaySelectedPlace(data) {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    HIDE PLACE GRID
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       HIDE EXPLORE GRID
+    ----------------------------------------------------- */
 
     const exploreGrid =
         document.getElementById(
@@ -691,15 +893,15 @@ function displaySelectedPlace(data) {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    CHAT MESSAGE
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       CHAT MESSAGE
+    ----------------------------------------------------- */
 
     appendMessage(
         "user",
-        `Tell me about ${escapeHTML(data.name)}`
+        `Tell me about ${escapeHTML(
+            data.name
+        )}`
     );
 
 
@@ -738,11 +940,9 @@ function displaySelectedPlace(data) {
     }, 300);
 
 
-    /*
-    ---------------------------------------------------------
-    OPEN DETAILS ON MOBILE
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       MOBILE DETAILS
+    ----------------------------------------------------- */
 
     if (window.innerWidth <= 900) {
 
@@ -779,7 +979,11 @@ function updateMainImage(data) {
     ) {
 
         firstImage =
-            data.images[0];
+            data.images.find(
+                img =>
+                    typeof img === "string" &&
+                    img.trim() !== ""
+            ) || "";
 
     }
 
@@ -787,7 +991,9 @@ function updateMainImage(data) {
     if (!firstImage) {
 
         firstImage =
-            "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1000&q=85";
+            data.image_url ||
+            data.image ||
+            DEFAULT_PLACE_IMAGE;
 
     }
 
@@ -797,7 +1003,8 @@ function updateMainImage(data) {
 
 
     image.alt =
-        data.name || "Place";
+        data.name ||
+        "Place";
 
 
     image.onerror =
@@ -806,7 +1013,7 @@ function updateMainImage(data) {
             this.onerror = null;
 
             this.src =
-                "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1000&q=85";
+                DEFAULT_PLACE_IMAGE;
 
         };
 
@@ -839,26 +1046,34 @@ function updateImageGallery(data) {
     gallery.innerHTML = "";
 
 
-    const images =
+    let images =
         Array.isArray(data.images)
-            ? data.images
+            ? data.images.filter(
+                image =>
+                    typeof image === "string" &&
+                    image.trim() !== ""
+              )
             : [];
 
 
-    /*
-    ---------------------------------------------------------
-    ONLY SHOW AVAILABLE IMAGES
-    ---------------------------------------------------------
-    */
+    if (
+        images.length === 0 &&
+        data.image_url
+    ) {
+
+        images = [
+            data.image_url
+        ];
+
+    }
+
 
     images
         .slice(0, 5)
-        .forEach(function (imageURL, index) {
-
-            if (!imageURL) {
-                return;
-            }
-
+        .forEach(function (
+            imageURL,
+            index
+        ) {
 
             const image =
                 document.createElement("img");
@@ -869,7 +1084,7 @@ function updateImageGallery(data) {
 
 
             image.alt =
-                `${data.name} view ${index + 1}`;
+                `${data.name || "Place"} view ${index + 1}`;
 
 
             image.className =
@@ -916,7 +1131,10 @@ function updateImageGallery(data) {
 
 
     console.log(
-        `Showing ${Math.min(images.length, 5)} images for ${data.name}`
+        `Showing ${Math.min(
+            images.length,
+            5
+        )} images for ${data.name}`
     );
 
 }
@@ -929,15 +1147,12 @@ function updateImageGallery(data) {
 function changePlace() {
 
     currentPlace = null;
-
     currentPlaceData = null;
 
 
-    /*
-    ---------------------------------------------------------
-    RESET DROPDOWN
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       RESET DROPDOWN
+    ----------------------------------------------------- */
 
     const selector =
         document.getElementById(
@@ -952,11 +1167,9 @@ function changePlace() {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    HIDE SELECTED AREA
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       HIDE SELECTED AREA
+    ----------------------------------------------------- */
 
     const selectedArea =
         document.getElementById(
@@ -972,11 +1185,9 @@ function changePlace() {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    HIDE ACTION PANEL
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       HIDE ACTION PANEL
+    ----------------------------------------------------- */
 
     const actionPanel =
         document.getElementById(
@@ -992,11 +1203,9 @@ function changePlace() {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    SHOW ALL PLACE CARDS
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       SHOW EXPLORE GRID
+    ----------------------------------------------------- */
 
     const exploreGrid =
         document.getElementById(
@@ -1012,11 +1221,9 @@ function changePlace() {
     }
 
 
-    /*
-    ---------------------------------------------------------
-    RESET DETAILS
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       RESET DETAILS
+    ----------------------------------------------------- */
 
     const details =
         document.getElementById(
@@ -1071,23 +1278,15 @@ async function sendQuery(
     }
 
 
-    /*
-    ---------------------------------------------------------
-    USER MESSAGE
-    ---------------------------------------------------------
-    */
-
     appendMessage(
         "user",
         escapeHTML(buttonText)
     );
 
 
-    /*
-    ---------------------------------------------------------
-    ROUTE
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       ROUTE
+    ----------------------------------------------------- */
 
     if (intent === "ROUTE") {
 
@@ -1097,12 +1296,6 @@ async function sendQuery(
 
     }
 
-
-    /*
-    ---------------------------------------------------------
-    TYPING
-    ---------------------------------------------------------
-    */
 
     const typingID =
         showTyping();
@@ -1117,9 +1310,14 @@ async function sendQuery(
 
                     method: "POST",
 
+                    credentials: "same-origin",
+
                     headers: {
 
                         "Content-Type":
+                            "application/json",
+
+                        "Accept":
                             "application/json",
 
                         "X-CSRFToken":
@@ -1131,7 +1329,9 @@ async function sendQuery(
                         JSON.stringify({
 
                             question:
-                                buildQuestion(intent)
+                                buildQuestion(
+                                    intent
+                                )
 
                         })
 
@@ -1139,7 +1339,9 @@ async function sendQuery(
             );
 
 
-        removeTyping(typingID);
+        removeTyping(
+            typingID
+        );
 
 
         if (!response.ok) {
@@ -1196,7 +1398,9 @@ async function sendQuery(
 
     } catch (error) {
 
-        removeTyping(typingID);
+        removeTyping(
+            typingID
+        );
 
 
         console.error(
@@ -1204,13 +1408,6 @@ async function sendQuery(
             error
         );
 
-
-        /*
-        -----------------------------------------------------
-        IMPORTANT:
-        Use local dataset data only if API fails.
-        -----------------------------------------------------
-        */
 
         const fallback =
             generateLocalAnswer(
@@ -1229,7 +1426,7 @@ async function sendQuery(
 
 
 /* =========================================================
-   BUILD QUESTION FOR ENGINE
+   BUILD QUESTION
 ========================================================= */
 
 function buildQuestion(intent) {
@@ -1294,25 +1491,34 @@ function generateLocalAnswer(intent) {
 
     switch (intent) {
 
-
         case "ABOUT_PLACE":
 
             return `
+
                 <div class="response-heading">
-                    📖 About ${escapeHTML(data.name)}
+                    📖 About ${escapeHTML(
+                        data.name
+                    )}
                 </div>
 
                 <p>
-                    ${escapeHTML(data.description || "Information unavailable.")}
+                    ${escapeHTML(
+                        data.description ||
+                        "Information unavailable."
+                    )}
                 </p>
+
             `;
 
 
         case "HISTORY":
 
             return `
+
                 <div class="response-heading">
-                    🏛 History of ${escapeHTML(data.name)}
+                    🏛 History of ${escapeHTML(
+                        data.name
+                    )}
                 </div>
 
                 <p>
@@ -1321,14 +1527,18 @@ function generateLocalAnswer(intent) {
                         "Historical information is currently unavailable."
                     )}
                 </p>
+
             `;
 
 
         case "ENTRY_FEE":
 
             return `
+
                 <div class="response-heading">
-                    🎟 Entry Fee — ${escapeHTML(data.name)}
+                    🎟 Entry Fee — ${escapeHTML(
+                        data.name
+                    )}
                 </div>
 
                 <p>
@@ -1346,12 +1556,14 @@ function generateLocalAnswer(intent) {
                         "Not available"
                     )}
                 </p>
+
             `;
 
 
         case "BEST_TIME":
 
             return `
+
                 <div class="response-heading">
                     🕐 Best Time to Visit
                 </div>
@@ -1367,20 +1579,22 @@ function generateLocalAnswer(intent) {
                 ${
                     data.best_time_suggestion
                         ? `
-                        <p>
-                            💡 ${escapeHTML(
-                                data.best_time_suggestion
-                            )}
-                        </p>
-                        `
+                            <p>
+                                💡 ${escapeHTML(
+                                    data.best_time_suggestion
+                                )}
+                            </p>
+                          `
                         : ""
                 }
+
             `;
 
 
         case "AWARENESS":
 
             return `
+
                 <div class="response-heading">
                     💡 Travel Tips
                 </div>
@@ -1392,12 +1606,14 @@ function generateLocalAnswer(intent) {
                         "Travel tips are currently unavailable."
                     )}
                 </p>
+
             `;
 
 
         case "DURATION":
 
             return `
+
                 <div class="response-heading">
                     🕐 Recommended Duration
                 </div>
@@ -1408,19 +1624,24 @@ function generateLocalAnswer(intent) {
                         "Not available"
                     )}
                 </p>
+
             `;
 
 
         default:
 
             return `
+
                 <div class="response-heading">
-                    ✨ ${escapeHTML(data.name)}
+                    ✨ ${escapeHTML(
+                        data.name
+                    )}
                 </div>
 
                 <p>
                     Information is currently unavailable.
                 </p>
+
             `;
 
     }
@@ -1457,12 +1678,6 @@ function handleRoute() {
         currentPlaceData.longitude;
 
 
-    /*
-    ---------------------------------------------------------
-    CREATE GOOGLE MAPS DIRECTIONS URL
-    ---------------------------------------------------------
-    */
-
     let googleMapsURL = "";
 
 
@@ -1498,21 +1713,18 @@ function handleRoute() {
         googleMapsURL =
             "https://www.google.com/maps/dir/?api=1" +
             "&destination=" +
-            encodeURIComponent(name);
+            encodeURIComponent(
+                name
+            );
 
     }
 
-
-    /*
-    ---------------------------------------------------------
-    CHAT RESPONSE
-    ---------------------------------------------------------
-    */
 
     appendMessage(
         "bot",
 
         `
+
         <div class="response-heading">
             🗺 Intelligent Route Agent
         </div>
@@ -1531,14 +1743,18 @@ function handleRoute() {
 
         <button
             class="chat-route-button"
-            onclick="openGoogleMaps('${escapeAttribute(googleMapsURL)}')">
+            onclick="openGoogleMaps('${escapeAttribute(
+                googleMapsURL
+            )}')">
 
             <i class="fa-solid fa-map-location-dot"></i>
 
             Open in Google Maps
 
         </button>
+
         `
+
     );
 
 }
@@ -1551,9 +1767,7 @@ function handleRoute() {
 function openGoogleMaps(url) {
 
     if (!url) {
-
         return;
-
     }
 
 
@@ -1568,7 +1782,6 @@ function openGoogleMaps(url) {
 
 /* =========================================================
    KEEP OLD FUNCTION NAME
-   Your HTML already uses this.
 ========================================================= */
 
 function openIntelligentRoute() {
@@ -1719,11 +1932,9 @@ function formatBotResponse(text) {
         escapeHTML(text);
 
 
-    /*
-    ---------------------------------------------------------
-    BOLD
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       BOLD
+    ----------------------------------------------------- */
 
     html =
         html.replace(
@@ -1732,11 +1943,9 @@ function formatBotResponse(text) {
         );
 
 
-    /*
-    ---------------------------------------------------------
-    HEADINGS
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       HEADINGS
+    ----------------------------------------------------- */
 
     html =
         html.replace(
@@ -1745,11 +1954,9 @@ function formatBotResponse(text) {
         );
 
 
-    /*
-    ---------------------------------------------------------
-    BULLET POINTS
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       BULLETS
+    ----------------------------------------------------- */
 
     html =
         html.replace(
@@ -1758,11 +1965,9 @@ function formatBotResponse(text) {
         );
 
 
-    /*
-    ---------------------------------------------------------
-    NUMBERED LIST
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       NUMBERED LIST
+    ----------------------------------------------------- */
 
     html =
         html.replace(
@@ -1771,11 +1976,9 @@ function formatBotResponse(text) {
         );
 
 
-    /*
-    ---------------------------------------------------------
-    LINE BREAKS
-    ---------------------------------------------------------
-    */
+    /* -----------------------------------------------------
+       LINE BREAKS
+    ----------------------------------------------------- */
 
     html =
         html.replace(
@@ -1802,9 +2005,7 @@ function showTyping() {
 
 
     if (!container) {
-
         return null;
-
     }
 
 
@@ -1924,6 +2125,7 @@ function toggleSidebar(side) {
         sidebar.classList.add(
             "open"
         );
+
 
         showOverlay();
 
@@ -2087,13 +2289,9 @@ function showSection(section) {
     );
 
 
-    /*
-    ---------------------------------------------------------
-    For now keep existing design.
-    ---------------------------------------------------------
-    */
-
-    closeSidebar("left");
+    closeSidebar(
+        "left"
+    );
 
 }
 
@@ -2133,13 +2331,116 @@ function scrollChatToBottom() {
 
 
 /* =========================================================
+   SEARCH FILTER
+========================================================= */
+
+function initializeSearch() {
+
+    const searchInput =
+        document.getElementById(
+            "place-search"
+        );
+
+
+    if (!searchInput) {
+
+        console.log(
+            "Search box NOT found on this page."
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "Search box found! Ready to filter."
+    );
+
+
+    searchInput.addEventListener(
+        "input",
+        function (event) {
+
+            const searchTerm =
+                event.target.value
+                    .toLowerCase()
+                    .trim();
+
+
+            const placeCards =
+                document.querySelectorAll(
+                    ".place-card"
+                );
+
+
+            placeCards.forEach(
+                function (card) {
+
+                    const nameElement =
+                        card.querySelector(
+                            "h4"
+                        );
+
+
+                    const categoryElement =
+                        card.querySelector(
+                            ".place-category"
+                        );
+
+
+                    const placeName =
+                        nameElement
+                            ? nameElement.textContent
+                                .toLowerCase()
+                                .trim()
+                            : "";
+
+
+                    const placeCategory =
+                        categoryElement
+                            ? categoryElement.textContent
+                                .toLowerCase()
+                                .trim()
+                            : "";
+
+
+                    const matches =
+                        placeName.includes(
+                            searchTerm
+                        ) ||
+                        placeCategory.includes(
+                            searchTerm
+                        );
+
+
+                    card.style.display =
+                        matches
+                            ? ""
+                            : "none";
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
    SET TEXT
 ========================================================= */
 
-function setText(id, value) {
+function setText(
+    id,
+    value
+) {
 
     const element =
-        document.getElementById(id);
+        document.getElementById(
+            id
+        );
 
 
     if (element) {
@@ -2305,34 +2606,3 @@ function escapeAttribute(value) {
         );
 
 }
-// =====================================================
-//   SEARCH FILTER LOGIC
-// =====================================================
-document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('place-search');
-    
-    if (searchInput) {
-        console.log("Search box found! Ready to filter."); // To check if script loaded
-        
-        searchInput.addEventListener('input', function(e) {
-            // Get search text, make it lowercase, and remove extra spaces
-            const searchTerm = e.target.value.toLowerCase().trim();
-            const placeCards = document.querySelectorAll('.place-card');
-            
-            placeCards.forEach(card => {
-                // Get text, make lowercase, and clean up HTML spaces
-                const placeName = card.querySelector('h4').textContent.toLowerCase().trim();
-                const placeCategory = card.querySelector('.place-category').textContent.toLowerCase().trim();
-                
-                // Check if either matches the search term
-                if (placeName.includes(searchTerm) || placeCategory.includes(searchTerm)) {
-                    card.style.display = 'flex'; // Or 'block', depending on your CSS
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        });
-    } else {
-        console.log("Search box NOT found on this page.");
-    }
-});
