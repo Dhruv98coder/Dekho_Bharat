@@ -1,15 +1,21 @@
 """
-Render-safe language detector for GoPlan Native Language AI.
+Native Language AI - Language Detection
 
-- Roman Hindi detection works locally.
-- Devanagari Hindi detection works locally.
-- Common English detection works locally.
-- Heavy Hugging Face model is optional and disabled by default.
-- Heavy model is loaded lazily and only once per process.
+Uses the original Hugging Face detector:
+    pruthwik/ilid-muril-model
+
+Design:
+- Roman Hindi detection remains local and fast.
+- Devanagari Hindi is detected locally.
+- Otherwise the original transformer detector is used.
+- Model is loaded lazily.
+- Model is loaded only once per Django worker.
+- Hugging Face cache is reused automatically.
 """
 
 import os
 import re
+import threading
 
 
 # ============================================================
@@ -21,14 +27,27 @@ MODEL_NAME = os.getenv(
     "pruthwik/ilid-muril-model",
 )
 
+# IMPORTANT:
+# Keep the original model enabled by default.
+#
+# Set:
+# NATIVE_AI_MODEL_ENABLED=False
+#
+# only when you intentionally want to disable the transformer
+# detector on a low-memory deployment.
 NATIVE_AI_MODEL_ENABLED = (
     os.getenv(
         "NATIVE_AI_MODEL_ENABLED",
-        "False",
+        "True",
     )
     .strip()
     .lower()
-    in {"1", "true", "yes", "on"}
+    in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 )
 
 
@@ -37,11 +56,15 @@ NATIVE_AI_MODEL_ENABLED = (
 # ============================================================
 
 _classifier = None
+_classifier_lock = threading.Lock()
 
 
 def _get_classifier():
     """
-    Load the transformer detector only when explicitly enabled.
+    Lazily load the original Hugging Face classifier.
+
+    The same classifier instance is reused inside the Django
+    worker process.
     """
 
     global _classifier
@@ -52,23 +75,34 @@ def _get_classifier():
     if not NATIVE_AI_MODEL_ENABLED:
         return None
 
-    try:
-        from transformers import pipeline
+    with _classifier_lock:
 
-        _classifier = pipeline(
-            "text-classification",
-            model=MODEL_NAME,
-        )
+        if _classifier is not None:
+            return _classifier
 
-        return _classifier
+        try:
+            from transformers import pipeline
 
-    except Exception as error:
-        print(
-            "[NativeLanguage] Detector model load failed:",
-            error,
-        )
-        _classifier = None
-        return None
+            _classifier = pipeline(
+                "text-classification",
+                model=MODEL_NAME,
+            )
+
+            return _classifier
+
+        except Exception as error:
+
+            print(
+                "[NativeLanguage] "
+                "Detector model loading failed:",
+                repr(error),
+            )
+
+            _classifier = None
+
+            raise RuntimeError(
+                "Native Language detection model could not be loaded."
+            ) from error
 
 
 # ============================================================
@@ -81,6 +115,7 @@ LANGUAGE_MAP = {
     "Hindi": "Hindi",
     "English": "English",
 
+    # Keep unknown labels safe.
     "LABEL_0": "Unknown",
     "LABEL_1": "Unknown",
     "LABEL_2": "Unknown",
@@ -234,6 +269,9 @@ ROMAN_HINDI_WORDS = {
     "yatra",
     "paryatan",
     "tourist",
+    "dekho",
+    "batao",
+    "dikhao",
 }
 
 
@@ -275,58 +313,182 @@ STRONG_ROMAN_HINDI_WORDS = {
 
 
 # ============================================================
-# ENGLISH WORDS
+# ROMAN → DEVANAGARI
 # ============================================================
 
-ENGLISH_WORDS = {
-    "the",
-    "is",
-    "are",
-    "am",
-    "my",
-    "your",
-    "you",
-    "what",
-    "where",
-    "when",
-    "how",
-    "why",
-    "this",
-    "that",
-    "these",
-    "those",
-    "and",
-    "or",
-    "to",
-    "in",
-    "of",
-    "for",
-    "with",
-    "from",
-    "please",
-    "show",
-    "tell",
-    "give",
-    "find",
-    "place",
-    "places",
-    "want",
-    "visit",
-    "travel",
-    "beautiful",
-    "near",
-    "best",
-    "good",
-    "looking",
-    "going",
-    "go",
-    "see",
-    "delhi",
+ROMAN_TO_DEVANAGARI = {
+    "namaste": "नमस्ते",
+    "namastee": "नमस्ते",
+    "namaskar": "नमस्कार",
+    "pranam": "प्रणाम",
+    "shukriya": "शुक्रिया",
+    "dhanyawad": "धन्यवाद",
+    "dhanyavad": "धन्यवाद",
+    "bhai": "भाई",
+    "bhaiya": "भैया",
+    "didi": "दीदी",
+    "ji": "जी",
+    "jii": "जी",
+
+    "main": "मैं",
+    "mai": "मैं",
+    "mein": "में",
+    "mujhe": "मुझे",
+    "mujhko": "मुझको",
+
+    "mera": "मेरा",
+    "meri": "मेरी",
+    "mere": "मेरे",
+
+    "hum": "हम",
+    "ham": "हम",
+
+    "aap": "आप",
+    "ap": "आप",
+
+    "tum": "तुम",
+    "tujhe": "तुझे",
+
+    "tera": "तेरा",
+    "teri": "तेरी",
+    "tere": "तेरे",
+
+    "yeh": "यह",
+    "ye": "यह",
+
+    "woh": "वह",
+    "wo": "वह",
+
+    "isko": "इसको",
+    "usko": "उसको",
+
+    "yahan": "यहाँ",
+    "wahan": "वहाँ",
+
+    "kya": "क्या",
+    "kyu": "क्यों",
+    "kyun": "क्यों",
+    "kyon": "क्यों",
+
+    "kaise": "कैसे",
+    "kaisa": "कैसा",
+    "kaisi": "कैसी",
+
+    "kab": "कब",
+
+    "kahan": "कहाँ",
+    "kahaan": "कहाँ",
+
+    "kaun": "कौन",
+
+    "hai": "है",
+    "hain": "हैं",
+    "ho": "हो",
+
+    "tha": "था",
+    "thi": "थी",
+    "the": "थे",
+
+    "hoga": "होगा",
+    "hogi": "होगी",
+
+    "kar": "कर",
+    "karo": "करो",
+    "karna": "करना",
+    "karta": "करता",
+    "karte": "करते",
+    "karti": "करती",
+
+    "chahiye": "चाहिए",
+
+    "chahta": "चाहता",
+    "chahti": "चाहती",
+
+    "jana": "जाना",
+    "jaana": "जाना",
+    "jao": "जाओ",
+
+    "aana": "आना",
+    "aao": "आओ",
+
+    "dekhna": "देखना",
+    "dekho": "देखो",
+
+    "batao": "बताओ",
+    "bata": "बता",
+
+    "dikhao": "दिखाओ",
+    "dikha": "दिखा",
+
+    "do": "दो",
+    "dena": "देना",
+    "lena": "लेना",
+    "lo": "लो",
+    "lelo": "लेलो",
+    "dijiye": "दीजिए",
+
+    "accha": "अच्छा",
+    "achha": "अच्छा",
+    "acha": "अच्छा",
+
+    "bahut": "बहुत",
+    "thoda": "थोड़ा",
+    "zyada": "ज़्यादा",
+
+    "sab": "सब",
+    "kuch": "कुछ",
+    "koi": "कोई",
+
+    "nahi": "नहीं",
+    "nahin": "नहीं",
+
+    "haan": "हाँ",
+    "han": "हाँ",
+
+    "aur": "और",
+    "lekin": "लेकिन",
+    "ya": "या",
+
+    "se": "से",
+    "ko": "को",
+    "ke": "के",
+    "ki": "की",
+    "ka": "का",
+
+    "par": "पर",
+    "pe": "पे",
+
+    "liye": "लिए",
+
+    "wala": "वाला",
+    "wali": "वाली",
+    "wale": "वाले",
+
+    "lagta": "लगता",
+    "lagti": "लगती",
+
+    "pasand": "पसंद",
+
+    "jagah": "जगह",
+    "jagahen": "जगहें",
+
+    "sundar": "सुंदर",
+    "khubsurat": "खूबसूरत",
+
+    "ghoomna": "घूमना",
+    "ghumna": "घूमना",
+    "ghoomne": "घूमने",
+    "ghumne": "घूमने",
+    "ghumo": "घूमो",
+
+    "safar": "सफ़र",
+    "yatra": "यात्रा",
+    "paryatan": "पर्यटन",
 }
 
 
 # ============================================================
-# NORMALIZE TEXT
+# TEXT NORMALIZATION
 # ============================================================
 
 def normalize_text(text):
@@ -345,7 +507,7 @@ def normalize_text(text):
 
 
 # ============================================================
-# DEVANAGARI DETECTION
+# DEVANAGARI
 # ============================================================
 
 def contains_devanagari(text):
@@ -361,7 +523,7 @@ def contains_devanagari(text):
 
 
 # ============================================================
-# ROMAN HINDI DETECTION
+# ROMAN HINDI
 # ============================================================
 
 def detect_roman_hindi(text):
@@ -402,20 +564,18 @@ def detect_roman_hindi(text):
         if word in STRONG_ROMAN_HINDI_WORDS
     )
 
-    # Strong signal
     if strong_matches >= 1:
         return {
             "is_roman_hindi": True,
             "confidence": 90.0,
         }
 
-    # Multiple Hindi words
     if hindi_matches >= 2:
         ratio = hindi_matches / len(words)
 
         confidence = min(
             98.0,
-            70.0 + (ratio * 28.0),
+            70.0 + ratio * 28.0,
         )
 
         return {
@@ -426,7 +586,6 @@ def detect_roman_hindi(text):
             ),
         }
 
-    # Short sentence
     if hindi_matches >= 1 and len(words) <= 5:
         return {
             "is_roman_hindi": True,
@@ -440,187 +599,8 @@ def detect_roman_hindi(text):
 
 
 # ============================================================
-# ENGLISH HEURISTIC
-# ============================================================
-
-def detect_english_heuristic(text):
-    words = re.findall(
-        r"[a-zA-Z]+",
-        text.lower(),
-    )
-
-    if not words:
-        return {
-            "is_english": False,
-            "confidence": 0.0,
-        }
-
-    english_matches = sum(
-        1
-        for word in words
-        if word in ENGLISH_WORDS
-    )
-
-    if english_matches >= 1:
-        ratio = english_matches / len(words)
-
-        return {
-            "is_english": True,
-            "confidence": round(
-                min(
-                    98.0,
-                    70.0 + (ratio * 25.0),
-                ),
-                2,
-            ),
-        }
-
-    return {
-        "is_english": False,
-        "confidence": 0.0,
-    }
-
-
-# ============================================================
 # ROMAN HINDI → DEVANAGARI
 # ============================================================
-
-ROMAN_TO_DEVANAGARI = {
-    "namaste": "नमस्ते",
-    "namastee": "नमस्ते",
-    "namaskar": "नमस्कार",
-    "pranam": "प्रणाम",
-    "shukriya": "शुक्रिया",
-    "dhanyawad": "धन्यवाद",
-    "dhanyavad": "धन्यवाद",
-    "bhai": "भाई",
-    "bhaiya": "भैया",
-    "didi": "दीदी",
-    "ji": "जी",
-    "jii": "जी",
-
-    "main": "मैं",
-    "mai": "मैं",
-    "mein": "में",
-    "mujhe": "मुझे",
-    "mujhko": "मुझको",
-    "mera": "मेरा",
-    "meri": "मेरी",
-    "mere": "मेरे",
-
-    "hum": "हम",
-    "ham": "हम",
-    "aap": "आप",
-    "ap": "आप",
-    "tum": "तुम",
-    "tujhe": "तुझे",
-    "tera": "तेरा",
-    "teri": "तेरी",
-    "tere": "तेरे",
-
-    "yeh": "यह",
-    "ye": "यह",
-    "woh": "वह",
-    "wo": "वह",
-    "isko": "इसको",
-    "usko": "उसको",
-    "yahan": "यहाँ",
-    "wahan": "वहाँ",
-
-    "kya": "क्या",
-    "kyu": "क्यों",
-    "kyun": "क्यों",
-    "kyon": "क्यों",
-    "kaise": "कैसे",
-    "kaisa": "कैसा",
-    "kaisi": "कैसी",
-    "kab": "कब",
-    "kahan": "कहाँ",
-    "kahaan": "कहाँ",
-    "kaun": "कौन",
-
-    "hai": "है",
-    "hain": "हैं",
-    "ho": "हो",
-    "tha": "था",
-    "thi": "थी",
-    "the": "थे",
-    "hoga": "होगा",
-    "hogi": "होगी",
-
-    "kar": "कर",
-    "karo": "करो",
-    "karna": "करना",
-    "karta": "करता",
-    "karte": "करते",
-    "karti": "करती",
-    "chahiye": "चाहिए",
-    "chahta": "चाहता",
-    "chahti": "चाहती",
-
-    "jana": "जाना",
-    "jaana": "जाना",
-    "jao": "जाओ",
-    "aana": "आना",
-    "aao": "आओ",
-    "dekhna": "देखना",
-    "dekho": "देखो",
-    "batao": "बताओ",
-    "bata": "बता",
-    "dikhao": "दिखाओ",
-    "dikha": "दिखा",
-    "do": "दो",
-    "dena": "देना",
-    "lena": "लेना",
-    "lo": "लो",
-    "lelo": "लेलो",
-    "dijiye": "दीजिए",
-
-    "accha": "अच्छा",
-    "achha": "अच्छा",
-    "acha": "अच्छा",
-    "bahut": "बहुत",
-    "thoda": "थोड़ा",
-    "zyada": "ज़्यादा",
-    "sab": "सब",
-    "kuch": "कुछ",
-    "koi": "कोई",
-    "nahi": "नहीं",
-    "nahin": "नहीं",
-    "haan": "हाँ",
-    "han": "हाँ",
-    "aur": "और",
-    "lekin": "लेकिन",
-    "ya": "या",
-    "se": "से",
-    "ko": "को",
-    "ke": "के",
-    "ki": "की",
-    "ka": "का",
-    "par": "पर",
-    "pe": "पे",
-    "liye": "लिए",
-    "wala": "वाला",
-    "wali": "वाली",
-    "wale": "वाले",
-    "lagta": "लगता",
-    "lagti": "लगती",
-    "pasand": "पसंद",
-    "jagah": "जगह",
-    "jagahen": "जगहें",
-    "sundar": "सुंदर",
-    "khubsurat": "खूबसूरत",
-
-    "ghoomna": "घूमना",
-    "ghumna": "घूमना",
-    "ghoomne": "घूमने",
-    "ghumne": "घूमने",
-    "ghumo": "घूमो",
-    "safar": "सफ़र",
-    "yatra": "यात्रा",
-    "paryatan": "पर्यटन",
-}
-
 
 def roman_hindi_to_devanagari(text):
     text = normalize_text(text)
@@ -632,6 +612,7 @@ def roman_hindi_to_devanagari(text):
     converted_words = []
 
     for word in words:
+
         match = re.match(
             r"^([^a-zA-Z]*)([a-zA-Z]+)([^a-zA-Z]*)$",
             word,
@@ -645,10 +626,8 @@ def roman_hindi_to_devanagari(text):
         core = match.group(2)
         suffix = match.group(3)
 
-        lower_word = core.lower()
-
         converted = ROMAN_TO_DEVANAGARI.get(
-            lower_word,
+            core.lower(),
             core,
         )
 
@@ -658,7 +637,9 @@ def roman_hindi_to_devanagari(text):
             + suffix
         )
 
-    return " ".join(converted_words)
+    return " ".join(
+        converted_words
+    )
 
 
 # ============================================================
@@ -693,7 +674,9 @@ def detect_language(text):
         }
 
     # --------------------------------------------------------
-    # 2. Devanagari Hindi
+    # 2. Devanagari
+    #
+    # This preserves the original behavior of your old system.
     # --------------------------------------------------------
 
     if contains_devanagari(text):
@@ -706,45 +689,52 @@ def detect_language(text):
         }
 
     # --------------------------------------------------------
-    # 3. English
+    # 3. Original transformer model
+    #
+    # English text reaches the original model instead of a
+    # homemade word list.
     # --------------------------------------------------------
-
-    english_result = detect_english_heuristic(text)
-
-    if english_result["is_english"]:
-        return {
-            "language": "English",
-            "language_code": "en",
-            "label": "en",
-            "confidence": english_result["confidence"],
-            "roman_hindi": False,
-        }
-
-    # --------------------------------------------------------
-    # 4. Optional transformer fallback
-    # --------------------------------------------------------
-
-    classifier = _get_classifier()
-
-    if classifier is None:
-        return {
-            "language": "Unknown",
-            "language_code": "unknown",
-            "label": "unknown",
-            "confidence": 0.0,
-            "roman_hindi": False,
-        }
 
     try:
-        result = classifier(text)[0]
 
-        raw_label = result.get(
-            "label",
-            "unknown",
+        classifier = _get_classifier()
+
+        if classifier is None:
+            return {
+                "language": "Unknown",
+                "language_code": "unknown",
+                "label": "unknown",
+                "confidence": 0.0,
+                "roman_hindi": False,
+            }
+
+        result = classifier(text)
+
+        if not result:
+            return {
+                "language": "Unknown",
+                "language_code": "unknown",
+                "label": "unknown",
+                "confidence": 0.0,
+                "roman_hindi": False,
+            }
+
+        result = result[0]
+
+        raw_label = str(
+            result.get(
+                "label",
+                "unknown",
+            )
         )
 
         confidence = round(
-            float(result.get("score", 0.0)) * 100,
+            float(
+                result.get(
+                    "score",
+                    0.0,
+                )
+            ) * 100,
             2,
         )
 
@@ -754,6 +744,7 @@ def detect_language(text):
         )
 
         if language_name == "Unknown":
+
             return {
                 "language": "Unknown",
                 "language_code": "unknown",
@@ -779,9 +770,11 @@ def detect_language(text):
         }
 
     except Exception as error:
+
         print(
-            "[NativeLanguage] Detection error:",
-            error,
+            "[NativeLanguage] "
+            "Detection error:",
+            repr(error),
         )
 
         return {
