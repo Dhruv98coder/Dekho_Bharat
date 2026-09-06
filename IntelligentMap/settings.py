@@ -27,11 +27,33 @@ SECRET_KEY = os.getenv(
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 
+# ============================================================
+# ALLOWED HOSTS
+# ============================================================
+#
+# Local:
+#   127.0.0.1
+#   localhost
+#
+# Render:
+#   dekho-bharat.onrender.com
+#
+# Render environment variable can override this.
+# Example:
+# ALLOWED_HOSTS=dekho-bharat.onrender.com
+# ============================================================
+
+_default_hosts = (
+    "127.0.0.1,"
+    "localhost,"
+    "dekho-bharat.onrender.com"
+)
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv(
         "ALLOWED_HOSTS",
-        "127.0.0.1,localhost",
+        _default_hosts,
     ).split(",")
     if host.strip()
 ]
@@ -42,7 +64,9 @@ ALLOWED_HOSTS = [
 # ============================================================
 
 INSTALLED_APPS = [
+    # --------------------------------------------------------
     # Django
+    # --------------------------------------------------------
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -50,12 +74,14 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    # --------------------------------------------------------
     # GoPlan modules
-    "map_engine",
-    "metro",
+    # --------------------------------------------------------
     "goplan_home",
-    "chatbot",
+    "map_engine",
     "native_language",
+    "metro",
+    "chatbot",
 ]
 
 
@@ -64,13 +90,11 @@ INSTALLED_APPS = [
 # ============================================================
 
 MIDDLEWARE = [
-    # Security
     "django.middleware.security.SecurityMiddleware",
 
-    # Static files / production support
+    # WhiteNoise for static files on Render
     "whitenoise.middleware.WhiteNoiseMiddleware",
 
-    # Django
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -97,12 +121,10 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
 
-        # Main project templates folder
         "DIRS": [
             BASE_DIR / "templates",
         ],
 
-        # Also search templates inside Django apps
         "APP_DIRS": True,
 
         "OPTIONS": {
@@ -119,11 +141,12 @@ TEMPLATES = [
 # ============================================================
 # DATABASE
 # ============================================================
-# Local development uses SQLite only.
 #
-# No PostgreSQL
-# No DATABASE_URL
-# No dj_database_url
+# Current setup:
+# SQLite only
+#
+# No PostgreSQL required right now.
+# No dj_database_url required.
 # ============================================================
 
 DATABASES = {
@@ -182,12 +205,24 @@ USE_TZ = True
 # ============================================================
 # CSRF
 # ============================================================
+#
+# Render:
+# https://dekho-bharat.onrender.com
+#
+# The environment variable can still be overridden later.
+# ============================================================
+
+_default_csrf_origins = (
+    "http://127.0.0.1:8000,"
+    "http://localhost:8000,"
+    "https://dekho-bharat.onrender.com"
+)
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
-        "",
+        _default_csrf_origins,
     ).split(",")
     if origin.strip()
 ]
@@ -206,35 +241,20 @@ SECURE_PROXY_SSL_HEADER = (
 # ============================================================
 # STATIC FILES
 # ============================================================
-#
-# Project structure:
-#
-# GoPlan/
-# ├── static/
-# │   ├── css/
-# │   │   └── app_shell.css
-# │   ├── js/
-# │   └── images/
-# │
-# └── staticfiles/
-#
-# ============================================================
 
 STATIC_URL = "/static/"
 
-
-# Source static directory
+# Main project static directory
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-
-# Production collectstatic output
+# Production collected static directory
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 # ============================================================
-# STATIC STORAGE
+# STATIC STORAGE / WHITENOISE
 # ============================================================
 
 STORAGES = {
@@ -271,16 +291,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # AI CONFIGURATION
 # ============================================================
 
-# Current AI provider.
+# Possible providers:
+#   rule_based
+#   local_model
+#   openai
+#   future_model
 #
-# Example:
-# rule_based
-# future_model
-# openai
-# local_model
-#
-# This allows the AI implementation to be changed later
-# without changing the whole application.
+# The default keeps the application lightweight.
+
 AI_PROVIDER = os.getenv(
     "AI_PROVIDER",
     "rule_based",
@@ -288,30 +306,78 @@ AI_PROVIDER = os.getenv(
 
 
 # ============================================================
-# GO PLAN APPLICATION SETTINGS
+# GOPLAN MODULE FLAGS
 # ============================================================
 
-# Main application name
 GOPLAN_APP_NAME = "GoPlan"
 
-# Native Language module
-NATIVE_LANGUAGE_ENABLED = True
-
-# Intelligent Map module
 INTELLIGENT_MAP_ENABLED = True
 
-# Metro module
+NATIVE_LANGUAGE_ENABLED = True
+
 METRO_ENABLED = True
 
-# Shristi AI assistant
 SHRISTI_ENABLED = True
 
 
 # ============================================================
-# DEVELOPMENT
+# ROUTING CONFIGURATION
 # ============================================================
 
-# Useful during local development
+ORS_API_KEY = os.getenv(
+    "ORS_API_KEY",
+    "",
+)
+
+GOPLAN_BIKE_ROUTER_URL = os.getenv(
+    "GOPLAN_BIKE_ROUTER_URL",
+    "https://routing.openstreetmap.de/routed-bike/route/v1/driving",
+)
+
+GOPLAN_FOOT_ROUTER_URL = os.getenv(
+    "GOPLAN_FOOT_ROUTER_URL",
+    "https://routing.openstreetmap.de/routed-foot/route/v1/driving",
+)
+
+try:
+    GOPLAN_ROUTER_TIMEOUT = int(
+        os.getenv(
+            "GOPLAN_ROUTER_TIMEOUT",
+            "25",
+        )
+    )
+except ValueError:
+    GOPLAN_ROUTER_TIMEOUT = 25
+
+
+# ============================================================
+# FILE UPLOAD LIMITS
+# ============================================================
+
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+
+
+# ============================================================
+# PRODUCTION SECURITY
+# ============================================================
+
+# Enable secure cookies only when DEBUG=False.
+SESSION_COOKIE_SECURE = not DEBUG
+
+CSRF_COOKIE_SECURE = not DEBUG
+
+SECURE_BROWSER_XSS_FILTER = True
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# ============================================================
+# OPTIONAL RENDER SETTINGS
+# ============================================================
+
+# Keep this False unless you specifically want Django to
+# redirect HTTP requests to HTTPS.
+
+SECURE_SSL_REDIRECT = False
