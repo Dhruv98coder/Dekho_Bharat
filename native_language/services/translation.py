@@ -9,13 +9,14 @@ Original models:
         Helsinki-NLP/opus-mt-en-hi
 
 Design:
-- Original models are preserved.
+- Original Hugging Face models are preserved.
 - Models are loaded lazily.
 - Each model is loaded once per Django worker.
 - Hugging Face cache is reused.
-- No force_download is used.
-- PyTorch is imported only when model inference is needed.
-- Place names are protected/corrected.
+- No force_download.
+- PyTorch is imported only when inference is required.
+- Existing place-name protection/correction is preserved.
+- Model loading errors are handled without crashing the Django process.
 """
 
 import os
@@ -24,7 +25,7 @@ import threading
 
 
 # ============================================================
-# MODEL CONFIGURATION
+# MODELS
 # ============================================================
 
 HI_EN_MODEL = os.getenv(
@@ -38,11 +39,24 @@ EN_HI_MODEL = os.getenv(
 )
 
 
-# IMPORTANT:
-# Keep original translation models enabled by default.
+# ============================================================
+# MODEL ENABLE SWITCH
+# ============================================================
 #
-# Set False only when you intentionally want to disable heavy
-# translation models on a constrained deployment.
+# Default = True
+#
+# Local machine:
+#   True
+#
+# Render:
+#   True if enough memory is available.
+#
+# If you ever need to temporarily disable translation models:
+#
+# NATIVE_TRANSLATION_MODEL_ENABLED=False
+#
+# ============================================================
+
 NATIVE_TRANSLATION_MODEL_ENABLED = (
     os.getenv(
         "NATIVE_TRANSLATION_MODEL_ENABLED",
@@ -60,7 +74,7 @@ NATIVE_TRANSLATION_MODEL_ENABLED = (
 
 
 # ============================================================
-# MODEL STATE
+# MODEL CACHE
 # ============================================================
 
 _hi_en_tokenizer = None
@@ -69,18 +83,24 @@ _hi_en_model = None
 _en_hi_tokenizer = None
 _en_hi_model = None
 
+_hi_en_loading = False
+_en_hi_loading = False
+
 _hi_en_lock = threading.Lock()
 _en_hi_lock = threading.Lock()
 
 
 # ============================================================
-# HINDI → ENGLISH MODEL
+# HINDI -> ENGLISH MODEL
 # ============================================================
 
 def _get_hi_en():
+
     global _hi_en_tokenizer
     global _hi_en_model
+    global _hi_en_loading
 
+    # Already loaded
     if (
         _hi_en_tokenizer is not None
         and _hi_en_model is not None
@@ -90,11 +110,13 @@ def _get_hi_en():
             _hi_en_model,
         )
 
+    # Disabled
     if not NATIVE_TRANSLATION_MODEL_ENABLED:
         return None, None
 
     with _hi_en_lock:
 
+        # Check again after acquiring lock
         if (
             _hi_en_tokenizer is not None
             and _hi_en_model is not None
@@ -104,10 +126,21 @@ def _get_hi_en():
                 _hi_en_model,
             )
 
+        if _hi_en_loading:
+            return None, None
+
+        _hi_en_loading = True
+
         try:
+
             from transformers import (
                 AutoTokenizer,
                 AutoModelForSeq2SeqLM,
+            )
+
+            print(
+                "[NativeLanguage] "
+                "Loading Hindi -> English model..."
             )
 
             tokenizer = AutoTokenizer.from_pretrained(
@@ -123,6 +156,11 @@ def _get_hi_en():
             _hi_en_tokenizer = tokenizer
             _hi_en_model = model
 
+            print(
+                "[NativeLanguage] "
+                "Hindi -> English model loaded."
+            )
+
             return (
                 _hi_en_tokenizer,
                 _hi_en_model,
@@ -132,27 +170,27 @@ def _get_hi_en():
 
             print(
                 "[NativeLanguage] "
-                "Hindi→English model loading failed:",
+                "Hindi -> English model load error:",
                 repr(error),
             )
 
-            _hi_en_tokenizer = None
-            _hi_en_model = None
+            return None, None
 
-            raise RuntimeError(
-                "Hindi to English translation model "
-                "could not be loaded."
-            ) from error
+        finally:
+            _hi_en_loading = False
 
 
 # ============================================================
-# ENGLISH → HINDI MODEL
+# ENGLISH -> HINDI MODEL
 # ============================================================
 
 def _get_en_hi():
+
     global _en_hi_tokenizer
     global _en_hi_model
+    global _en_hi_loading
 
+    # Already loaded
     if (
         _en_hi_tokenizer is not None
         and _en_hi_model is not None
@@ -162,11 +200,13 @@ def _get_en_hi():
             _en_hi_model,
         )
 
+    # Disabled
     if not NATIVE_TRANSLATION_MODEL_ENABLED:
         return None, None
 
     with _en_hi_lock:
 
+        # Check again after acquiring lock
         if (
             _en_hi_tokenizer is not None
             and _en_hi_model is not None
@@ -176,10 +216,21 @@ def _get_en_hi():
                 _en_hi_model,
             )
 
+        if _en_hi_loading:
+            return None, None
+
+        _en_hi_loading = True
+
         try:
+
             from transformers import (
                 AutoTokenizer,
                 AutoModelForSeq2SeqLM,
+            )
+
+            print(
+                "[NativeLanguage] "
+                "Loading English -> Hindi model..."
             )
 
             tokenizer = AutoTokenizer.from_pretrained(
@@ -195,6 +246,11 @@ def _get_en_hi():
             _en_hi_tokenizer = tokenizer
             _en_hi_model = model
 
+            print(
+                "[NativeLanguage] "
+                "English -> Hindi model loaded."
+            )
+
             return (
                 _en_hi_tokenizer,
                 _en_hi_model,
@@ -204,17 +260,14 @@ def _get_en_hi():
 
             print(
                 "[NativeLanguage] "
-                "English→Hindi model loading failed:",
+                "English -> Hindi model load error:",
                 repr(error),
             )
 
-            _en_hi_tokenizer = None
-            _en_hi_model = None
+            return None, None
 
-            raise RuntimeError(
-                "English to Hindi translation model "
-                "could not be loaded."
-            ) from error
+        finally:
+            _en_hi_loading = False
 
 
 # ============================================================
@@ -222,33 +275,54 @@ def _get_en_hi():
 # ============================================================
 
 HINDI_PLACE_NAMES = {
-    "कुतुब मीनार": "Qutub Minar",
-    "कुतुबमीनार": "Qutub Minar",
 
-    "लाल किला": "Red Fort",
-    "लालकिला": "Red Fort",
+    "कुतुब मीनार":
+        "Qutub Minar",
 
-    "इंडिया गेट": "India Gate",
-    "इंडियागेट": "India Gate",
+    "कुतुबमीनार":
+        "Qutub Minar",
 
-    "हुमायूं का मकबरा": "Humayun's Tomb",
+    "लाल किला":
+        "Red Fort",
 
-    "कमल मंदिर": "Lotus Temple",
+    "लालकिला":
+        "Red Fort",
 
-    "जामा मस्जिद": "Jama Masjid",
+    "इंडिया गेट":
+        "India Gate",
 
-    "अक्षरधाम मंदिर": "Akshardham Temple",
-    "अक्षरधाम": "Akshardham Temple",
+    "इंडियागेट":
+        "India Gate",
 
-    "जंतर मंतर": "Jantar Mantar",
+    "हुमायूं का मकबरा":
+        "Humayun's Tomb",
 
-    "पुराना किला": "Purana Qila",
+    "कमल मंदिर":
+        "Lotus Temple",
 
-    "लोधी गार्डन": "Lodhi Garden",
+    "जामा मस्जिद":
+        "Jama Masjid",
 
-    "राष्ट्रपति भवन": "Rashtrapati Bhavan",
+    "अक्षरधाम मंदिर":
+        "Akshardham Temple",
 
-    "राजघाट": "Raj Ghat",
+    "अक्षरधाम":
+        "Akshardham Temple",
+
+    "जंतर मंतर":
+        "Jantar Mantar",
+
+    "पुराना किला":
+        "Purana Qila",
+
+    "लोधी गार्डन":
+        "Lodhi Garden",
+
+    "राष्ट्रपति भवन":
+        "Rashtrapati Bhavan",
+
+    "राजघाट":
+        "Raj Ghat",
 }
 
 
@@ -257,50 +331,102 @@ HINDI_PLACE_NAMES = {
 # ============================================================
 
 ENGLISH_PLACE_CORRECTIONS = {
-    "QUTUB_MAR": "Qutub Minar",
-    "QUTUB_MINAR": "Qutub Minar",
-    "Qutub Mar": "Qutub Minar",
-    "Qutub Minar": "Qutub Minar",
-    "Qutb Minar": "Qutub Minar",
-    "Kutub Minar": "Qutub Minar",
-    "Kutub Tower": "Qutub Minar",
-    "Qutub Tower": "Qutub Minar",
-    "Kutble Tower": "Qutub Minar",
-    "Kuthble Tower": "Qutub Minar",
 
-    "RED_FORT": "Red Fort",
-    "PALCHOLDER0": "Red Fort",
-    "PALHOLDER0": "Red Fort",
-    "PALCHOLDER": "Red Fort",
+    "QUTUB_MAR":
+        "Qutub Minar",
 
-    "Red Kila": "Red Fort",
-    "Lal Kila": "Red Fort",
-    "Lal Qila": "Red Fort",
+    "QUTUB_MINAR":
+        "Qutub Minar",
 
-    "India Gate": "India Gate",
+    "Qutub Mar":
+        "Qutub Minar",
 
-    "Humayun Tomb": "Humayun's Tomb",
-    "Humayun's Tomb": "Humayun's Tomb",
+    "Qutub Minar":
+        "Qutub Minar",
 
-    "Lotus Temple": "Lotus Temple",
+    "Qutb Minar":
+        "Qutub Minar",
 
-    "Jama Mosque": "Jama Masjid",
-    "Jama Masjid": "Jama Masjid",
+    "Kutub Minar":
+        "Qutub Minar",
 
-    "Akshardham": "Akshardham Temple",
-    "Akshardham Temple": "Akshardham Temple",
+    "Kutub Tower":
+        "Qutub Minar",
 
-    "Jantar Mantar": "Jantar Mantar",
+    "Qutub Tower":
+        "Qutub Minar",
 
-    "Old Fort": "Purana Qila",
-    "Purana Qila": "Purana Qila",
+    "Kutble Tower":
+        "Qutub Minar",
 
-    "Lodi Garden": "Lodhi Garden",
-    "Lodhi Garden": "Lodhi Garden",
+    "Kuthble Tower":
+        "Qutub Minar",
 
-    "Rashtrapati Bhavan": "Rashtrapati Bhavan",
+    "RED_FORT":
+        "Red Fort",
 
-    "Raj Ghat": "Raj Ghat",
+    "PALCHOLDER0":
+        "Red Fort",
+
+    "PALHOLDER0":
+        "Red Fort",
+
+    "PALCHOLDER":
+        "Red Fort",
+
+    "Red Kila":
+        "Red Fort",
+
+    "Lal Kila":
+        "Red Fort",
+
+    "Lal Qila":
+        "Red Fort",
+
+    "India Gate":
+        "India Gate",
+
+    "Humayun Tomb":
+        "Humayun's Tomb",
+
+    "Humayun's Tomb":
+        "Humayun's Tomb",
+
+    "Lotus Temple":
+        "Lotus Temple",
+
+    "Jama Mosque":
+        "Jama Masjid",
+
+    "Jama Masjid":
+        "Jama Masjid",
+
+    "Akshardham":
+        "Akshardham Temple",
+
+    "Akshardham Temple":
+        "Akshardham Temple",
+
+    "Jantar Mantar":
+        "Jantar Mantar",
+
+    "Old Fort":
+        "Purana Qila",
+
+    "Purana Qila":
+        "Purana Qila",
+
+    "Lodi Garden":
+        "Lodhi Garden",
+
+    "Lodhi Garden":
+        "Lodhi Garden",
+
+    "Rashtrapati Bhavan":
+        "Rashtrapati Bhavan",
+
+    "Raj Ghat":
+        "Raj Ghat",
 }
 
 
@@ -309,6 +435,7 @@ ENGLISH_PLACE_CORRECTIONS = {
 # ============================================================
 
 def correct_english_place_names(text):
+
     if not text:
         return text
 
@@ -335,24 +462,36 @@ def correct_english_place_names(text):
 # ============================================================
 
 def translate_known_hindi_sentence(text):
+
     text = text.strip()
 
     for hindi_place, english_place in HINDI_PLACE_NAMES.items():
 
         patterns = [
+
+            # मैं <PLACE> देखने जा रहा हूं
             rf"^मैं\s+{re.escape(hindi_place)}\s+देखने\s+जा\s+रहा\s+हूं$",
+
             rf"^मैं\s+{re.escape(hindi_place)}\s+देखने\s+जा\s+रहा\s+हूँ$",
 
+            # मैं <PLACE> देखने जाऊंगा
             rf"^मैं\s+{re.escape(hindi_place)}\s+देखने\s+जाऊंगा$",
+
             rf"^मैं\s+{re.escape(hindi_place)}\s+देखने\s+जाऊँगा$",
 
+            # आज मैं <PLACE> देखने जाऊंगा
             rf"^आज\s+मैं\s+{re.escape(hindi_place)}\s+देखने\s+जाऊंगा$",
+
             rf"^आज\s+मैं\s+{re.escape(hindi_place)}\s+देखने\s+जाऊँगा$",
 
+            # आज मैं <PLACE> जाऊंगा
             rf"^आज\s+मैं\s+{re.escape(hindi_place)}\s+जाऊंगा$",
+
             rf"^आज\s+मैं\s+{re.escape(hindi_place)}\s+जाऊँगा$",
 
+            # मैं <PLACE> देखने जाऊंगा कल
             rf"^मैं\s+{re.escape(hindi_place)}\s+देखने\s+जाऊंगा\s+कल$",
+
             rf"^मैं\s+{re.escape(hindi_place)}\s+देखने\s+जाऊँगा\s+कल$",
         ]
 
@@ -373,6 +512,7 @@ def translate_known_hindi_sentence(text):
                     )
 
                 if "आज" in text:
+
                     if "देखने" in text:
                         return (
                             f"Today I will go to see "
@@ -402,6 +542,7 @@ def translate_known_hindi_sentence(text):
 # ============================================================
 
 def replace_hindi_place_names(text):
+
     result = text
 
     places = sorted(
@@ -421,17 +562,19 @@ def replace_hindi_place_names(text):
 
 
 # ============================================================
-# HINDI → ENGLISH
+# HINDI -> ENGLISH
 # ============================================================
 
 def translate_hindi_to_english(text):
+
     if not text or not text.strip():
         return ""
 
     text = text.strip()
 
     # --------------------------------------------------------
-    # 1. Known sentence patterns
+    # Known sentence first.
+    # This avoids unnecessary model loading for known patterns.
     # --------------------------------------------------------
 
     known_translation = (
@@ -444,135 +587,162 @@ def translate_hindi_to_english(text):
         return known_translation
 
     # --------------------------------------------------------
-    # 2. Get original model
+    # Load original model
     # --------------------------------------------------------
 
     tokenizer, model = _get_hi_en()
 
     if tokenizer is None or model is None:
 
-        raise RuntimeError(
-            "Hindi→English translation model "
-            "is disabled."
+        # Do NOT crash Django.
+        # Return original text if model cannot be loaded.
+        print(
+            "[NativeLanguage] "
+            "Hindi -> English model unavailable."
         )
 
+        return text
+
     # --------------------------------------------------------
-    # 3. Preserve known place names
+    # Preserve known place names
     # --------------------------------------------------------
 
     translated_input = (
-        replace_hindi_place_names(text)
+        replace_hindi_place_names(
+            text
+        )
     )
 
     # --------------------------------------------------------
-    # 4. Tokenize
+    # Tokenize
     # --------------------------------------------------------
 
-    inputs = tokenizer(
-        translated_input,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=128,
-    )
+    try:
 
-    # --------------------------------------------------------
-    # 5. Generate
-    # --------------------------------------------------------
-
-    import torch
-
-    with torch.no_grad():
-
-        output = model.generate(
-            **inputs,
+        inputs = tokenizer(
+            translated_input,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
             max_length=128,
-            num_beams=8,
-            do_sample=False,
-            early_stopping=True,
         )
 
-    # --------------------------------------------------------
-    # 6. Decode
-    # --------------------------------------------------------
+        # ----------------------------------------------------
+        # Generate
+        # ----------------------------------------------------
 
-    translated = tokenizer.decode(
-        output[0],
-        skip_special_tokens=True,
-    )
+        import torch
 
-    # --------------------------------------------------------
-    # 7. Correct places
-    # --------------------------------------------------------
+        with torch.no_grad():
 
-    translated = correct_english_place_names(
-        translated
-    )
+            output = model.generate(
+                **inputs,
+                max_length=128,
+                num_beams=8,
+                do_sample=False,
+                early_stopping=True,
+            )
 
-    return translated.strip()
+        # ----------------------------------------------------
+        # Decode
+        # ----------------------------------------------------
+
+        translated = tokenizer.decode(
+            output[0],
+            skip_special_tokens=True,
+        )
+
+        # ----------------------------------------------------
+        # Correct place names
+        # ----------------------------------------------------
+
+        translated = (
+            correct_english_place_names(
+                translated
+            )
+        )
+
+        return translated.strip()
+
+    except Exception as error:
+
+        print(
+            "[NativeLanguage] "
+            "Hindi -> English inference error:",
+            repr(error),
+        )
+
+        return text
 
 
 # ============================================================
-# ENGLISH → HINDI
+# ENGLISH -> HINDI
 # ============================================================
 
 def translate_english_to_hindi(text):
+
     if not text or not text.strip():
         return ""
 
     text = text.strip()
 
     # --------------------------------------------------------
-    # 1. Load original model
+    # Load original model
     # --------------------------------------------------------
 
     tokenizer, model = _get_en_hi()
 
     if tokenizer is None or model is None:
 
-        raise RuntimeError(
-            "English→Hindi translation model "
-            "is disabled."
+        print(
+            "[NativeLanguage] "
+            "English -> Hindi model unavailable."
         )
 
-    # --------------------------------------------------------
-    # 2. Tokenize
-    # --------------------------------------------------------
-
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=128,
-    )
+        return text
 
     # --------------------------------------------------------
-    # 3. Generate
+    # Translate
     # --------------------------------------------------------
 
-    import torch
+    try:
 
-    with torch.no_grad():
-
-        output = model.generate(
-            **inputs,
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
             max_length=128,
-            num_beams=5,
-            do_sample=False,
-            early_stopping=True,
         )
 
-    # --------------------------------------------------------
-    # 4. Decode
-    # --------------------------------------------------------
+        import torch
 
-    translated = tokenizer.decode(
-        output[0],
-        skip_special_tokens=True,
-    )
+        with torch.no_grad():
 
-    return translated.strip()
+            output = model.generate(
+                **inputs,
+                max_length=128,
+                num_beams=5,
+                do_sample=False,
+                early_stopping=True,
+            )
+
+        translated = tokenizer.decode(
+            output[0],
+            skip_special_tokens=True,
+        )
+
+        return translated.strip()
+
+    except Exception as error:
+
+        print(
+            "[NativeLanguage] "
+            "English -> Hindi inference error:",
+            repr(error),
+        )
+
+        return text
 
 
 # ============================================================
@@ -601,5 +771,4 @@ def auto_translate(
             text
         )
 
-    # Unknown / unsupported language
     return text
