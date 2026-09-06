@@ -1,0 +1,254 @@
+.gp-sidebar {
+    position: fixed;
+    z-index: 4000;
+    inset: 0 auto 0 0;
+    width: 246px;
+    padding: 24px 16px;
+
+    display: flex;
+    flex-direction: column;
+
+    background: rgba(255, 255, 255, 0.97);
+    border-right: 1px solid #e4eaf3;
+    box-shadow: 10px 0 35px rgba(38, 61, 101, 0.08);
+
+    transition: transform 0.25s ease;
+}
+
+.gp-sidebar-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0 7px;
+}
+
+.gp-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    text-decoration: none;
+    color: #18263d;
+}
+
+.gp-brand-mark {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #3677e5, #8069db);
+    font-size: 20px;
+}
+
+.gp-brand b {
+    font-size: 17px;
+}
+
+.gp-brand small {
+    display: block;
+    color: #98a5b7;
+    font-size: 9px;
+    margin-top: 4px;
+}
+
+.gp-side-close {
+    display: none;
+}
+
+.gp-side-nav {
+    display: grid;
+    gap: 7px;
+    margin-top: 38px;
+}
+
+.gp-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+
+    border: 0;
+    border-radius: 14px;
+
+    background: transparent;
+    color: #748399;
+
+    text-decoration: none;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.gp-nav-link:hover {
+    color: #2563eb;
+    background: #eef4ff;
+}
+
+.gp-nav-link.active {
+    color: #2563eb;
+    background: #eef4ff;
+}
+
+.gp-nav-link:hover > span {
+    transform: translateY(-1px);
+}
+
+.gp-nav-link > span {
+    flex: 0 0 31px;
+
+    width: 31px;
+    height: 31px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 10px;
+
+    background: #edf3ff;
+    color: #3677e5;
+
+    font-size: 17px;
+    font-weight: 800;
+
+    transition: transform 0.2s ease;
+}
+
+.gp-nav-link b {
+    display: block;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.gp-nav-link small {
+    display: block;
+    margin-top: 2px;
+
+    color: #9ca8b8;
+    font-size: 9px;
+}
+
+.gp-sidebar-note {
+    margin-top: auto;
+    padding: 12px 8px;
+
+    color: #9aa7b9;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.gp-menu-toggle {
+    position: fixed;
+    z-index: 4100;
+
+    top: 16px;
+    left: 211px;
+
+    width: 40px;
+    height: 40px;
+
+    border: 1px solid #e1e8f2;
+    border-radius: 11px;
+
+    background: #fff;
+    color: #65758c;
+
+    box-shadow: 0 8px 22px rgba(32, 56, 95, 0.12);
+
+    cursor: pointer;
+
+    transition:
+        left 0.25s ease,
+        background 0.2s ease;
+}
+
+.gp-menu-toggle:hover {
+    background: #f7faff;
+}
+
+.gp-sidebar-backdrop {
+    display: none;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .gp-sidebar {
+        transform: translateX(-105%);
+    }
+
+    body.gp-menu-open .gp-sidebar {
+        transform: translateX(0);
+    }
+
+    .gp-menu-toggle {
+        left: 14px;
+    }
+
+    .gp-sidebar-backdrop {
+        display: block;
+
+        position: fixed;
+        z-index: 3999;
+        inset: 0;
+
+        background: rgba(16, 28, 48, 0.3);
+
+        opacity: 0;
+        pointer-events: none;
+
+        transition:
+            opacity 0.2s ease;
+    }
+
+    body.gp-menu-open .gp-sidebar-backdrop {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .gp-side-close {
+        display: grid;
+        place-items: center;
+
+        width: 32px;
+        height: 32px;
+
+        border: 0;
+        border-radius: 9px;
+
+        background: #f1f5fb;
+        color: #66758a;
+
+        cursor: pointer;
+    }
+}
+
+
+/* =========================================================
+   DESKTOP COLLAPSE
+========================================================= */
+
+@media (min-width: 901px) {
+
+    body.gp-menu-collapsed .gp-sidebar {
+        transform: translateX(-105%);
+    }
+
+    body.gp-menu-collapsed .gp-menu-toggle {
+        left: 16px;
+    }
+
+    body.gp-menu-collapsed main {
+        margin-left: 0;
+    }
+}

@@ -1,0 +1,469 @@
+.module-back{display:inline-flex;align-items:center;gap:7px;margin-bottom:20px;color:#5e718b;text-decoration:none;font-size:13px;font-weight:800}
+.swap-language{margin-left:auto;border:1px solid #d9e1ed;border-radius:10px;padding:7px 10px;background:#f7faff;color:#2f64c9;font-size:11px;font-weight:800;cursor:pointer}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+/* =========================
+   BODY
+========================= */
+
+body {
+    min-height: 100vh;
+
+    font-family: Arial, sans-serif;
+
+    background: #f5f7fb;
+
+    color: #172033;
+}
+
+
+/* =========================
+   CONTAINER
+========================= */
+
+.container {
+    width: min(1000px, 92%);
+
+    margin: auto;
+
+    padding: 65px 0;
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero {
+    text-align: center;
+
+    margin-bottom: 40px;
+}
+
+
+.tag {
+    display: inline-block;
+
+    padding: 8px 16px;
+
+    background: white;
+
+    border-radius: 30px;
+
+    font-size: 12px;
+
+    font-weight: bold;
+
+    letter-spacing: 1px;
+
+    margin-bottom: 20px;
+
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+}
+
+
+.hero h1 {
+    font-size: clamp(40px, 6vw, 68px);
+
+    line-height: 1.05;
+
+    margin-bottom: 20px;
+}
+
+
+.hero h1 span {
+    color: #e87524;
+}
+
+
+.subtitle {
+    max-width: 650px;
+
+    margin: auto;
+
+    color: #667085;
+
+    font-size: 16px;
+
+    line-height: 1.6;
+}
+
+
+/* =========================
+   TRANSLATOR CARD
+========================= */
+
+.translator-card {
+    background: white;
+
+    padding: 28px;
+
+    border-radius: 24px;
+
+    box-shadow:
+        0 15px 45px rgba(0,0,0,0.08);
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.section-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 12px;
+}
+
+
+.section-header label {
+    font-size: 16px;
+
+    font-weight: bold;
+}
+
+
+.section-header span {
+    font-size: 13px;
+
+    color: #667085;
+}
+
+
+/* =========================
+   TEXTAREA
+========================= */
+
+textarea {
+    width: 100%;
+
+    min-height: 170px;
+
+    padding: 18px;
+
+    resize: vertical;
+
+    border: 1px solid #d9dee8;
+
+    border-radius: 16px;
+
+    outline: none;
+
+    font-family: inherit;
+
+    font-size: 17px;
+
+    line-height: 1.5;
+
+    color: #172033;
+
+    background: #fff;
+
+    transition: 0.2s ease;
+}
+
+
+textarea::placeholder {
+    color: #98a2b3;
+}
+
+
+textarea:focus {
+    border-color: #e87524;
+
+    box-shadow:
+        0 0 0 3px rgba(232,117,36,0.10);
+}
+
+
+/* =========================
+   INPUT BUTTONS
+========================= */
+
+.input-actions {
+    display: flex;
+
+    gap: 12px;
+
+    margin-top: 14px;
+}
+
+
+button {
+    border: none;
+
+    border-radius: 12px;
+
+    padding: 13px 18px;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+
+button:hover {
+    transform: translateY(-2px);
+}
+
+
+/* =========================
+   SPEAK BUTTON
+========================= */
+
+.secondary-btn {
+    background: #eef1f6;
+
+    color: #172033;
+}
+
+
+.secondary-btn:hover {
+    background: #e3e7ee;
+}
+
+
+/* =========================
+   DETECT BUTTON
+========================= */
+
+.dark-btn {
+    background: #172033;
+
+    color: white;
+}
+
+
+.dark-btn:hover {
+    box-shadow:
+        0 8px 20px rgba(23,32,51,0.18);
+}
+
+
+/* =========================
+   AUTO INFO
+========================= */
+
+.auto-info {
+    margin-top: 12px;
+
+    font-size: 13px;
+
+    color: #98a2b3;
+}
+
+
+/* =========================
+   ARROW
+========================= */
+
+.arrow {
+    text-align: center;
+
+    padding: 18px;
+
+    font-size: 28px;
+
+    color: #e87524;
+}
+
+
+/* =========================
+   OUTPUT BOX
+========================= */
+
+.output-box {
+    min-height: 145px;
+
+    padding: 18px;
+
+    border: 1px solid #e1e5ec;
+
+    border-radius: 16px;
+
+    background: #fafbfc;
+
+    color: #172033;
+
+    font-size: 17px;
+
+    line-height: 1.6;
+
+    white-space: pre-wrap;
+}
+
+
+/* =========================
+   TRANSLATE BUTTON
+========================= */
+
+.translate-btn {
+    width: 100%;
+
+    margin-top: 14px;
+
+    padding: 15px;
+
+    background: #172033;
+
+    color: white;
+
+    font-size: 15px;
+}
+
+
+.translate-btn:hover {
+    box-shadow:
+        0 8px 20px rgba(23,32,51,0.18);
+}
+
+
+/* =========================
+   LISTEN BUTTON
+========================= */
+
+.listen-btn {
+    width: 100%;
+
+    margin-top: 12px;
+
+    padding: 14px;
+
+    background: #fff4eb;
+
+    color: #e87524;
+
+    border: 1px solid #f5d4bb;
+
+    font-size: 15px;
+}
+
+
+.listen-btn:hover {
+    background: #ffeadb;
+
+    box-shadow:
+        0 6px 18px rgba(232,117,36,0.12);
+}
+
+
+/* =========================
+   VOICE INFO
+========================= */
+
+.voice-info {
+    text-align: center;
+
+    margin-top: 10px;
+
+    font-size: 12px;
+
+    color: #98a2b3;
+}
+
+
+/* =========================
+   DISABLED
+========================= */
+
+button:disabled {
+    opacity: 0.55;
+
+    cursor: not-allowed;
+
+    transform: none;
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+.footer {
+    text-align: center;
+
+    margin-top: 28px;
+
+    color: #98a2b3;
+
+    font-size: 13px;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+
+    .container {
+        width: 94%;
+
+        padding: 40px 0;
+    }
+
+
+    .hero {
+        margin-bottom: 28px;
+    }
+
+
+    .hero h1 {
+        font-size: 42px;
+    }
+
+
+    .subtitle {
+        font-size: 14px;
+    }
+
+
+    .translator-card {
+        padding: 18px;
+
+        border-radius: 20px;
+    }
+
+
+    .input-actions {
+        flex-direction: column;
+    }
+
+
+    .input-actions button {
+        width: 100%;
+    }
+
+
+    .section-header {
+        align-items: flex-start;
+
+        gap: 10px;
+    }
+
+
+    .section-header span {
+        text-align: right;
+    }
+
+
+    textarea {
+        min-height: 150px;
+    }
+
+}
