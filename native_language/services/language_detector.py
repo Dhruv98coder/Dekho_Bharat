@@ -9,37 +9,42 @@ MODEL_NAME = "pruthwik/ilid-muril-model"
 
 classifier = None
 
+
 def _get_classifier():
+
     global classifier
+
     if classifier is None:
+
         from transformers import pipeline
-        classifier = pipeline("text-classification", model=MODEL_NAME)
+
+        classifier = pipeline(
+            "text-classification",
+            model=MODEL_NAME
+        )
+
     return classifier
 
 
 # ============================================================
 # LANGUAGE LABEL MAPPING
 # ============================================================
-#
-# IMPORTANT:
-# Your model may return LABEL_0, LABEL_1, etc.
-# We don't blindly trust those labels.
-# Roman Hindi and Devanagari are handled separately.
-#
 
 LANGUAGE_MAP = {
+
     "hi": "Hindi",
     "en": "English",
+
     "Hindi": "Hindi",
     "English": "English",
 
-    # Keep these only if your model is known to use them.
     "LABEL_0": "Unknown",
     "LABEL_1": "Unknown",
     "LABEL_2": "Unknown",
     "LABEL_3": "Unknown",
     "LABEL_4": "Unknown",
     "LABEL_5": "Unknown",
+
 }
 
 
@@ -48,6 +53,7 @@ LANGUAGE_MAP = {
 # ============================================================
 
 ROMAN_HINDI_WORDS = {
+
     # greetings
     "namaste",
     "namastee",
@@ -140,7 +146,7 @@ ROMAN_HINDI_WORDS = {
     "lelo",
     "dijiye",
 
-    # common words
+    # common
     "accha",
     "achha",
     "acha",
@@ -175,25 +181,20 @@ ROMAN_HINDI_WORDS = {
     "sundar",
     "jagah",
     "jagahen",
+
+    # travel
     "ghoomna",
     "ghumna",
     "ghoomne",
     "ghumne",
     "ghumo",
     "travel",
-
-    # travel related
-    "jagah",
-    "place",
-    "ghumna",
-    "ghoomna",
     "safar",
     "yatra",
     "paryatan",
     "tourist",
+    "place",
     "dekho",
-    "batao",
-    "dikhao",
 }
 
 
@@ -202,6 +203,7 @@ ROMAN_HINDI_WORDS = {
 # ============================================================
 
 STRONG_ROMAN_HINDI_WORDS = {
+
     "namaste",
     "namastee",
     "namaskar",
@@ -231,6 +233,7 @@ STRONG_ROMAN_HINDI_WORDS = {
     "hai",
     "hain",
     "chahiye",
+
 }
 
 
@@ -415,6 +418,7 @@ ROMAN_TO_DEVANAGARI = {
     "safar": "सफ़र",
     "yatra": "यात्रा",
     "paryatan": "पर्यटन",
+
 }
 
 
@@ -464,10 +468,12 @@ def detect_roman_hindi(text):
     text = normalize_text(text)
 
     if not text:
+
         return {
             "is_roman_hindi": False,
             "confidence": 0.0
         }
+
 
     if contains_devanagari(text):
 
@@ -476,16 +482,20 @@ def detect_roman_hindi(text):
             "confidence": 0.0
         }
 
+
     words = re.findall(
         r"[a-zA-Z]+",
         text.lower()
     )
 
+
     if not words:
+
         return {
             "is_roman_hindi": False,
             "confidence": 0.0
         }
+
 
     hindi_matches = sum(
         1
@@ -493,15 +503,13 @@ def detect_roman_hindi(text):
         if word in ROMAN_HINDI_WORDS
     )
 
+
     strong_matches = sum(
         1
         for word in words
         if word in STRONG_ROMAN_HINDI_WORDS
     )
 
-    # -----------------------------------------------
-    # Strong Roman Hindi
-    # -----------------------------------------------
 
     if strong_matches >= 1:
 
@@ -510,13 +518,13 @@ def detect_roman_hindi(text):
             "confidence": 90.0
         }
 
-    # -----------------------------------------------
-    # Multiple Hindi words
-    # -----------------------------------------------
 
     if hindi_matches >= 2:
 
-        ratio = hindi_matches / len(words)
+        ratio = (
+            hindi_matches /
+            len(words)
+        )
 
         confidence = min(
             98.0,
@@ -531,26 +539,24 @@ def detect_roman_hindi(text):
             )
         }
 
-    # -----------------------------------------------
-    # Short sentence
-    # -----------------------------------------------
 
-    if hindi_matches >= 1 and len(words) <= 5:
+    if (
+        hindi_matches >= 1
+        and
+        len(words) <= 5
+    ):
 
         return {
             "is_roman_hindi": True,
             "confidence": 80.0
         }
 
+
     return {
         "is_roman_hindi": False,
         "confidence": 0.0
     }
 
-
-# ============================================================
-# ROMAN HINDI → DEVANAGARI
-# ============================================================
 
 # ============================================================
 # ROMAN HINDI → DEVANAGARI
@@ -567,37 +573,45 @@ def roman_hindi_to_devanagari(text):
 
     converted_words = []
 
+
     for word in words:
 
-        # Keep punctuation
         match = re.match(
             r"^([^a-zA-Z]*)([a-zA-Z]+)([^a-zA-Z]*)$",
             word
         )
 
+
         if not match:
 
-            converted_words.append(word)
+            converted_words.append(
+                word
+            )
 
             continue
+
 
         prefix = match.group(1)
         core = match.group(2)
         suffix = match.group(3)
 
+
         lower_word = core.lower()
+
 
         if lower_word in ROMAN_TO_DEVANAGARI:
 
-            converted = ROMAN_TO_DEVANAGARI[
-                lower_word
-            ]
+            converted =
+                ROMAN_TO_DEVANAGARI[
+                    lower_word
+                ]
 
         else:
 
-            # Unknown English words, names and
-            # place names remain unchanged.
+            # Unknown English words,
+            # names and places remain unchanged.
             converted = core
+
 
         converted_words.append(
             prefix +
@@ -605,12 +619,18 @@ def roman_hindi_to_devanagari(text):
             suffix
         )
 
-    return " ".join(converted_words)
+
+    return " ".join(
+        converted_words
+    )
+
+
 # ============================================================
 # IMPORTANT PLACE NAMES
 # ============================================================
 
 PLACE_NAMES = [
+
     "Qutub Minar",
     "Qutb Minar",
     "Qutub",
@@ -653,6 +673,7 @@ PLACE_NAMES = [
     "Delhi",
 
     "Agra",
+
 ]
 
 
@@ -666,41 +687,55 @@ def protect_place_names(text):
 
     result = text
 
-    # Longest names first
+
     sorted_places = sorted(
         PLACE_NAMES,
         key=len,
         reverse=True
     )
 
-    for index, place in enumerate(sorted_places):
+
+    for index, place in enumerate(
+        sorted_places
+    ):
 
         pattern = re.compile(
             re.escape(place),
             re.IGNORECASE
         )
 
+
         if pattern.search(result):
 
-            token = f"ZZPLACE{index}ZZ"
+            token =
+                f"ZZPLACE{index}ZZ"
 
             protected[token] = place
+
 
             result = pattern.sub(
                 token,
                 result
             )
 
-    return result, protected
+
+    return (
+        result,
+        protected
+    )
 
 
 # ============================================================
 # RESTORE PLACE NAMES
 # ============================================================
 
-def restore_place_names(text, protected):
+def restore_place_names(
+    text,
+    protected
+):
 
     result = text
+
 
     for token, place in protected.items():
 
@@ -709,17 +744,18 @@ def restore_place_names(text, protected):
             place
         )
 
-        # Some tokenizers may alter capitalization,
-        # so also try lowercase/uppercase variants.
+
         result = result.replace(
             token.lower(),
             place
         )
 
+
         result = result.replace(
             token.upper(),
             place
         )
+
 
     return result
 
@@ -732,6 +768,7 @@ def detect_language(text):
 
     text = normalize_text(text)
 
+
     if not text:
 
         return {
@@ -742,41 +779,67 @@ def detect_language(text):
             "roman_hindi": False
         }
 
+
     # ========================================================
     # ROMAN HINDI FIRST
     # ========================================================
 
-    roman_result = detect_roman_hindi(text)
+    roman_result = detect_roman_hindi(
+        text
+    )
 
-    if roman_result["is_roman_hindi"]:
+
+    if roman_result[
+        "is_roman_hindi"
+    ]:
 
         return {
+
             "language": "Hindi",
+
             "language_code": "hi",
+
             "label": "hi",
-            "confidence": roman_result["confidence"],
+
+            "confidence":
+                roman_result[
+                    "confidence"
+                ],
+
             "roman_hindi": True
+
         }
+
 
     # ========================================================
     # DEVANAGARI
     # ========================================================
 
-    if contains_devanagari(text):
+    if contains_devanagari(
+        text
+    ):
 
         return {
+
             "language": "Hindi",
+
             "language_code": "hi",
+
             "label": "hi",
+
             "confidence": 99.0,
+
             "roman_hindi": False
+
         }
+
 
     # ========================================================
     # ENGLISH HEURISTIC
     # ========================================================
 
     english_words = {
+
         "the",
         "is",
         "are",
@@ -816,12 +879,15 @@ def detect_language(text):
         "best",
         "good",
         "looking",
+
     }
+
 
     words = re.findall(
         r"[a-zA-Z]+",
         text.lower()
     )
+
 
     english_matches = sum(
         1
@@ -829,20 +895,41 @@ def detect_language(text):
         if word in english_words
     )
 
+
     if english_matches >= 1:
 
-        ratio = english_matches / len(words)
+        ratio = (
+            english_matches /
+            len(words)
+        )
+
 
         return {
-            "language": "English",
-            "language_code": "en",
-            "label": "en",
-            "confidence": round(
-                min(98.0, 70.0 + ratio * 25.0),
-                2
-            ),
-            "roman_hindi": False
+
+            "language":
+                "English",
+
+            "language_code":
+                "en",
+
+            "label":
+                "en",
+
+            "confidence":
+                round(
+                    min(
+                        98.0,
+                        70.0 +
+                        ratio * 25.0
+                    ),
+                    2
+                ),
+
+            "roman_hindi":
+                False
+
         }
+
 
     # ========================================================
     # TRANSFORMER
@@ -850,46 +937,83 @@ def detect_language(text):
 
     try:
 
-        result = _get_classifier()(text)[0]
+        result =
+            _get_classifier()(
+                text
+            )[0]
 
-        raw_label = result["label"]
+
+        raw_label =
+            result["label"]
+
 
         confidence = round(
-            float(result["score"]) * 100,
+            float(
+                result["score"]
+            ) * 100,
             2
         )
 
-        language_name = LANGUAGE_MAP.get(
-            raw_label,
-            "Unknown"
-        )
 
-        # Do NOT return LABEL_5 as a language.
+        language_name =
+            LANGUAGE_MAP.get(
+                raw_label,
+                "Unknown"
+            )
+
+
         if language_name == "Unknown":
 
             return {
-                "language": "Unknown",
-                "language_code": "unknown",
-                "label": raw_label,
-                "confidence": confidence,
-                "roman_hindi": False
+
+                "language":
+                    "Unknown",
+
+                "language_code":
+                    "unknown",
+
+                "label":
+                    raw_label,
+
+                "confidence":
+                    confidence,
+
+                "roman_hindi":
+                    False
+
             }
 
+
         language_code = {
+
             "Hindi": "hi",
             "English": "en"
+
         }.get(
             language_name,
             raw_label
         )
 
+
         return {
-            "language": language_name,
-            "language_code": language_code,
-            "label": raw_label,
-            "confidence": confidence,
-            "roman_hindi": False
+
+            "language":
+                language_name,
+
+            "language_code":
+                language_code,
+
+            "label":
+                raw_label,
+
+            "confidence":
+                confidence,
+
+            "roman_hindi":
+                False
+
         }
+
 
     except Exception as error:
 
@@ -898,10 +1022,22 @@ def detect_language(text):
             error
         )
 
+
         return {
-            "language": "Unknown",
-            "language_code": "unknown",
-            "label": "unknown",
-            "confidence": 0.0,
-            "roman_hindi": False
+
+            "language":
+                "Unknown",
+
+            "language_code":
+                "unknown",
+
+            "label":
+                "unknown",
+
+            "confidence":
+                0.0,
+
+            "roman_hindi":
+                False
+
         }
