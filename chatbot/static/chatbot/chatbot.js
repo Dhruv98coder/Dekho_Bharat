@@ -1,7 +1,11 @@
 /* =========================================================
    DEKHOCHAT
    GoPlan AI Travel Assistant
+<<<<<<< HEAD
    CLEAN VERSION
+=======
+   CLEAN + FIXED VERSION
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 ========================================================= */
 
 
@@ -15,6 +19,7 @@ let currentPlaceData = null;
 
 /* =========================================================
    API URLS
+<<<<<<< HEAD
 ========================================================= */
 
 const API = {
@@ -22,10 +27,29 @@ const API = {
     places: "/shristi/places/",
     chat: "/shristi/api/"
 
+=======
+   Django chatbot app is mounted at /shristi/
+========================================================= */
+
+const API = {
+    places: "/shristi/places/",
+    chat: "/shristi/api/"
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 };
 
 
 /* =========================================================
+<<<<<<< HEAD
+=======
+   DEFAULT IMAGE
+========================================================= */
+
+const DEFAULT_PLACE_IMAGE =
+    "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1000&q=85";
+
+
+/* =========================================================
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
    PAGE INITIALIZATION
 ========================================================= */
 
@@ -34,6 +58,10 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("DekhoChat initialized.");
 
     loadAllPlaces();
+<<<<<<< HEAD
+=======
+    initializeSearch();
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     window.addEventListener("resize", function () {
 
@@ -55,7 +83,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 /* =========================================================
+<<<<<<< HEAD
    LOAD ALL 81 PLACES
+=======
+   LOAD ALL PLACES
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
    Django -> /shristi/places/
 ========================================================= */
 
@@ -70,7 +102,22 @@ async function loadAllPlaces() {
 
     try {
 
+<<<<<<< HEAD
         const response = await fetch(API.places);
+=======
+        console.log("Loading destinations...");
+
+
+        const response =
+            await fetch(API.places, {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json"
+                },
+                credentials: "same-origin"
+            });
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
         if (!response.ok) {
 
@@ -81,7 +128,13 @@ async function loadAllPlaces() {
         }
 
 
+<<<<<<< HEAD
         const data = await response.json();
+=======
+        const data =
+            await response.json();
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
         console.log(
             "PLACES API RESPONSE:",
@@ -92,7 +145,12 @@ async function loadAllPlaces() {
         if (!data.success) {
 
             throw new Error(
+<<<<<<< HEAD
                 data.error || "Could not load places."
+=======
+                data.error ||
+                "Could not load places."
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             );
 
         }
@@ -109,6 +167,7 @@ async function loadAllPlaces() {
         );
 
 
+<<<<<<< HEAD
         /*
         -----------------------------------------------------
         SELECT DROPDOWN
@@ -172,6 +231,18 @@ async function loadAllPlaces() {
             });
 
         }
+=======
+        populatePlaceDropdown(
+            selector,
+            places
+        );
+
+
+        populatePlaceGrid(
+            grid,
+            places
+        );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
     } catch (error) {
@@ -182,6 +253,7 @@ async function loadAllPlaces() {
         );
 
 
+<<<<<<< HEAD
         if (grid) {
 
             grid.innerHTML = `
@@ -195,6 +267,12 @@ async function loadAllPlaces() {
             `;
 
         }
+=======
+        showPlaceLoadError(
+            grid,
+            error
+        );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     }
 
@@ -202,6 +280,133 @@ async function loadAllPlaces() {
 
 
 /* =========================================================
+<<<<<<< HEAD
+=======
+   POPULATE PLACE DROPDOWN
+========================================================= */
+
+function populatePlaceDropdown(
+    selector,
+    places
+) {
+
+    if (!selector) {
+        return;
+    }
+
+
+    selector.innerHTML = "";
+
+
+    const defaultOption =
+        document.createElement("option");
+
+
+    defaultOption.value = "";
+
+
+    defaultOption.textContent =
+        `Select a place from ${places.length || 81} destinations...`;
+
+
+    selector.appendChild(
+        defaultOption
+    );
+
+
+    places.forEach(function (place) {
+
+        const option =
+            document.createElement("option");
+
+
+        option.value =
+            place.name || "";
+
+
+        option.textContent =
+            place.name || "Unknown Place";
+
+
+        selector.appendChild(
+            option
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   POPULATE PLACE GRID
+========================================================= */
+
+function populatePlaceGrid(
+    grid,
+    places
+) {
+
+    if (!grid) {
+        return;
+    }
+
+
+    grid.innerHTML = "";
+
+
+    places.forEach(function (place) {
+
+        const card =
+            createPlaceCard(place);
+
+
+        grid.appendChild(
+            card
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   PLACE LOAD ERROR
+========================================================= */
+
+function showPlaceLoadError(
+    grid,
+    error
+) {
+
+    if (!grid) {
+        return;
+    }
+
+
+    grid.innerHTML = `
+
+        <div class="place-load-error">
+
+            ⚠️ Unable to load destinations.
+
+            <br>
+
+            <small>
+                ${escapeHTML(
+                    error?.message ||
+                    "Unknown error"
+                )}
+            </small>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
    CREATE PLACE CARD
 ========================================================= */
 
@@ -210,17 +415,34 @@ function createPlaceCard(place) {
     const article =
         document.createElement("article");
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     article.className =
         "place-card";
 
 
+<<<<<<< HEAD
     article.onclick = function () {
 
         selectPlace(place.name);
+=======
+    article.dataset.placeName =
+        place.name || "";
+
+
+    article.onclick = function () {
+
+        selectPlace(
+            place.name
+        );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     };
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     IMAGE
@@ -231,15 +453,35 @@ function createPlaceCard(place) {
 
     if (
         place.images &&
+=======
+    /* -----------------------------------------------------
+       IMAGE
+    ----------------------------------------------------- */
+
+    let image = "";
+
+
+    if (
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         Array.isArray(place.images) &&
         place.images.length > 0
     ) {
 
+<<<<<<< HEAD
         image = place.images[0];
+=======
+        image =
+            place.images.find(
+                img =>
+                    typeof img === "string" &&
+                    img.trim() !== ""
+            ) || "";
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     FALLBACK IMAGE
@@ -250,10 +492,33 @@ function createPlaceCard(place) {
 
         image =
             "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=900&q=85";
+=======
+    if (!image) {
+
+        image =
+            place.image_url ||
+            place.image ||
+            "";
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     }
 
 
+<<<<<<< HEAD
+=======
+    if (!image) {
+
+        image =
+            DEFAULT_PLACE_IMAGE;
+
+    }
+
+
+    /* -----------------------------------------------------
+       BASIC DATA
+    ----------------------------------------------------- */
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     const category =
         place.category ||
         place.broad_category ||
@@ -271,14 +536,29 @@ function createPlaceCard(place) {
         "Explore this destination with DekhoChat.";
 
 
+<<<<<<< HEAD
+=======
+    const safeDescription =
+        String(description);
+
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     article.innerHTML = `
 
         <div class="place-image-wrapper">
 
             <img
                 src="${escapeAttribute(image)}"
+<<<<<<< HEAD
                 alt="${escapeAttribute(place.name)}"
                 onerror="this.src='https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=900&q=85';"
+=======
+                alt="${escapeAttribute(
+                    place.name || "Place"
+                )}"
+                loading="lazy"
+                onerror="this.onerror=null;this.src='${DEFAULT_PLACE_IMAGE}'"
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             >
 
             <span class="place-category">
@@ -291,12 +571,27 @@ function createPlaceCard(place) {
         <div class="place-card-content">
 
             <h4>
+<<<<<<< HEAD
                 ${escapeHTML(place.name)}
             </h4>
 
             <p>
                 ${escapeHTML(
                     description.substring(0, 140)
+=======
+                ${escapeHTML(
+                    place.name || "Unknown Place"
+                )}
+            </h4>
+
+
+            <p>
+                ${escapeHTML(
+                    safeDescription.substring(
+                        0,
+                        140
+                    )
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 )}
             </p>
 
@@ -334,6 +629,10 @@ function createPlaceCard(place) {
 
 /* =========================================================
    SELECT PLACE
+<<<<<<< HEAD
+=======
+   Django -> /shristi/place/<place_name>/
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 ========================================================= */
 
 async function selectPlace(placeName) {
@@ -349,19 +648,33 @@ async function selectPlace(placeName) {
     );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     GET PLACE DATA FROM DJANGO
     ---------------------------------------------------------
     */
 
+=======
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     try {
 
         const response =
             await fetch(
                 "/shristi/place/" +
                 encodeURIComponent(placeName) +
+<<<<<<< HEAD
                 "/"
+=======
+                "/",
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    credentials: "same-origin"
+                }
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             );
 
 
@@ -378,6 +691,15 @@ async function selectPlace(placeName) {
             await response.json();
 
 
+<<<<<<< HEAD
+=======
+        console.log(
+            "PLACE API RESPONSE:",
+            result
+        );
+
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         if (!result.success) {
 
             throw new Error(
@@ -391,6 +713,10 @@ async function selectPlace(placeName) {
         currentPlace =
             result.place.name;
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         currentPlaceData =
             result.place;
 
@@ -408,6 +734,41 @@ async function selectPlace(placeName) {
         );
 
 
+<<<<<<< HEAD
+=======
+        /*
+        -----------------------------------------------------
+        FALLBACK TO ALREADY LOADED CARD DATA
+        -----------------------------------------------------
+        */
+
+        const fallbackPlace =
+            findPlaceFromCard(
+                placeName
+            );
+
+
+        if (fallbackPlace) {
+
+            currentPlace =
+                fallbackPlace.name;
+
+
+            currentPlaceData =
+                fallbackPlace;
+
+
+            displaySelectedPlace(
+                fallbackPlace
+            );
+
+
+            return;
+
+        }
+
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         showBotMessage(
             "Unable to load this destination. " +
             error.message
@@ -419,17 +780,97 @@ async function selectPlace(placeName) {
 
 
 /* =========================================================
+<<<<<<< HEAD
    SELECT PLACE FROM DROPDOWN
 ========================================================= */
 
 function selectPlaceFromDropdown(placeName) {
+=======
+   FIND PLACE FROM EXISTING CARD
+========================================================= */
+
+function findPlaceFromCard(
+    placeName
+) {
+
+    const cards =
+        document.querySelectorAll(
+            ".place-card"
+        );
+
+
+    for (
+        const card of cards
+    ) {
+
+        const cardName =
+            card
+                .querySelector("h4")
+                ?.textContent
+                ?.trim();
+
+
+        if (
+            cardName &&
+            cardName.toLowerCase() ===
+                String(placeName)
+                    .toLowerCase()
+                    .trim()
+        ) {
+
+            return {
+                name: cardName,
+
+                category:
+                    card
+                        .querySelector(
+                            ".place-category"
+                        )
+                        ?.textContent
+                        ?.trim() || "",
+
+                description:
+                    card
+                        .querySelector(
+                            ".place-card-content p"
+                        )
+                        ?.textContent
+                        ?.trim() || "",
+
+                location: ""
+            };
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
+   SELECT PLACE FROM DROPDOWN
+========================================================= */
+
+function selectPlaceFromDropdown(
+    placeName
+) {
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     if (!placeName) {
         return;
     }
 
 
+<<<<<<< HEAD
     selectPlace(placeName);
+=======
+    selectPlace(
+        placeName
+    );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 }
 
@@ -448,15 +889,25 @@ function displaySelectedPlace(data) {
     currentPlace =
         data.name;
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     currentPlaceData =
         data;
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     UPDATE DROPDOWN
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       UPDATE DROPDOWN
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const selector =
         document.getElementById(
@@ -472,11 +923,17 @@ function displaySelectedPlace(data) {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     SELECTED PLACE AREA
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       SELECTED PLACE AREA
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const selectedArea =
         document.getElementById(
@@ -506,11 +963,17 @@ function displaySelectedPlace(data) {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     RIGHT DETAILS PANEL
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       RIGHT DETAILS PANEL
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const emptyState =
         document.getElementById(
@@ -557,21 +1020,36 @@ function displaySelectedPlace(data) {
     setText(
         "panel-location",
         data.location ||
+<<<<<<< HEAD
         data.address
+=======
+        data.address ||
+        "Delhi"
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     );
 
 
     setText(
         "panel-rating",
+<<<<<<< HEAD
         data.rating
             ? data.rating
             : "Not available"
+=======
+        data.rating ||
+        "Not available"
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     );
 
 
     setText(
         "panel-desc",
+<<<<<<< HEAD
         data.description
+=======
+        data.description ||
+        "Information unavailable."
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     );
 
 
@@ -583,18 +1061,28 @@ function displaySelectedPlace(data) {
     );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     ENTRY FEE
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       ENTRY FEE
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     let fee = "";
 
 
     if (data.entry_fee_indian) {
 
+<<<<<<< HEAD
         fee +=
+=======
+        fee =
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             "Indian: " +
             data.entry_fee_indian;
 
@@ -607,6 +1095,10 @@ function displaySelectedPlace(data) {
             fee += " | ";
         }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         fee +=
             "Foreign: " +
             data.entry_fee_foreigner;
@@ -617,6 +1109,10 @@ function displaySelectedPlace(data) {
     if (!fee) {
 
         fee =
+<<<<<<< HEAD
+=======
+            data.entry_fee ||
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             "Not available";
 
     }
@@ -628,6 +1124,7 @@ function displaySelectedPlace(data) {
     );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     MAIN IMAGE
@@ -651,6 +1148,19 @@ function displaySelectedPlace(data) {
     SHOW ACTION PANEL
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       IMAGES
+    ----------------------------------------------------- */
+
+    updateMainImage(data);
+    updateImageGallery(data);
+
+
+    /* -----------------------------------------------------
+       ACTION PANEL
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const actionPanel =
         document.getElementById(
@@ -666,11 +1176,17 @@ function displaySelectedPlace(data) {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     HIDE PLACE GRID
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       HIDE EXPLORE GRID
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const exploreGrid =
         document.getElementById(
@@ -686,6 +1202,7 @@ function displaySelectedPlace(data) {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     CHAT MESSAGE
@@ -695,6 +1212,17 @@ function displaySelectedPlace(data) {
     appendMessage(
         "user",
         `Tell me about ${escapeHTML(data.name)}`
+=======
+    /* -----------------------------------------------------
+       CHAT MESSAGE
+    ----------------------------------------------------- */
+
+    appendMessage(
+        "user",
+        `Tell me about ${escapeHTML(
+            data.name
+        )}`
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     );
 
 
@@ -733,11 +1261,17 @@ function displaySelectedPlace(data) {
     }, 300);
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     OPEN DETAILS ON MOBILE
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       MOBILE DETAILS
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     if (window.innerWidth <= 900) {
 
@@ -774,7 +1308,15 @@ function updateMainImage(data) {
     ) {
 
         firstImage =
+<<<<<<< HEAD
             data.images[0];
+=======
+            data.images.find(
+                img =>
+                    typeof img === "string" &&
+                    img.trim() !== ""
+            ) || "";
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     }
 
@@ -782,7 +1324,13 @@ function updateMainImage(data) {
     if (!firstImage) {
 
         firstImage =
+<<<<<<< HEAD
             "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1000&q=85";
+=======
+            data.image_url ||
+            data.image ||
+            DEFAULT_PLACE_IMAGE;
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     }
 
@@ -792,7 +1340,12 @@ function updateMainImage(data) {
 
 
     image.alt =
+<<<<<<< HEAD
         data.name || "Place";
+=======
+        data.name ||
+        "Place";
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
     image.onerror =
@@ -801,7 +1354,11 @@ function updateMainImage(data) {
             this.onerror = null;
 
             this.src =
+<<<<<<< HEAD
                 "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1000&q=85";
+=======
+                DEFAULT_PLACE_IMAGE;
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
         };
 
@@ -834,6 +1391,7 @@ function updateImageGallery(data) {
     gallery.innerHTML = "";
 
 
+<<<<<<< HEAD
     const images =
         Array.isArray(data.images)
             ? data.images
@@ -854,6 +1412,36 @@ function updateImageGallery(data) {
                 return;
             }
 
+=======
+    let images =
+        Array.isArray(data.images)
+            ? data.images.filter(
+                image =>
+                    typeof image === "string" &&
+                    image.trim() !== ""
+              )
+            : [];
+
+
+    if (
+        images.length === 0 &&
+        data.image_url
+    ) {
+
+        images = [
+            data.image_url
+        ];
+
+    }
+
+
+    images
+        .slice(0, 5)
+        .forEach(function (
+            imageURL,
+            index
+        ) {
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
             const image =
                 document.createElement("img");
@@ -864,7 +1452,11 @@ function updateImageGallery(data) {
 
 
             image.alt =
+<<<<<<< HEAD
                 `${data.name} view ${index + 1}`;
+=======
+                `${data.name || "Place"} view ${index + 1}`;
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
             image.className =
@@ -911,7 +1503,14 @@ function updateImageGallery(data) {
 
 
     console.log(
+<<<<<<< HEAD
         `Showing ${Math.min(images.length, 5)} images for ${data.name}`
+=======
+        `Showing ${Math.min(
+            images.length,
+            5
+        )} images for ${data.name}`
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     );
 
 }
@@ -924,6 +1523,7 @@ function updateImageGallery(data) {
 function changePlace() {
 
     currentPlace = null;
+<<<<<<< HEAD
 
     currentPlaceData = null;
 
@@ -933,6 +1533,14 @@ function changePlace() {
     RESET DROPDOWN
     ---------------------------------------------------------
     */
+=======
+    currentPlaceData = null;
+
+
+    /* -----------------------------------------------------
+       RESET DROPDOWN
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const selector =
         document.getElementById(
@@ -947,11 +1555,17 @@ function changePlace() {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     HIDE SELECTED AREA
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       HIDE SELECTED AREA
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const selectedArea =
         document.getElementById(
@@ -967,11 +1581,17 @@ function changePlace() {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     HIDE ACTION PANEL
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       HIDE ACTION PANEL
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const actionPanel =
         document.getElementById(
@@ -987,11 +1607,17 @@ function changePlace() {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     SHOW ALL PLACE CARDS
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       SHOW EXPLORE GRID
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const exploreGrid =
         document.getElementById(
@@ -1007,11 +1633,17 @@ function changePlace() {
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     RESET DETAILS
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       RESET DETAILS
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     const details =
         document.getElementById(
@@ -1066,23 +1698,32 @@ async function sendQuery(
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     USER MESSAGE
     ---------------------------------------------------------
     */
 
+=======
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     appendMessage(
         "user",
         escapeHTML(buttonText)
     );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     ROUTE
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       ROUTE
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     if (intent === "ROUTE") {
 
@@ -1093,12 +1734,15 @@ async function sendQuery(
     }
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     TYPING
     ---------------------------------------------------------
     */
 
+=======
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     const typingID =
         showTyping();
 
@@ -1112,11 +1756,22 @@ async function sendQuery(
 
                     method: "POST",
 
+<<<<<<< HEAD
+=======
+                    credentials: "same-origin",
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                     headers: {
 
                         "Content-Type":
                             "application/json",
 
+<<<<<<< HEAD
+=======
+                        "Accept":
+                            "application/json",
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                         "X-CSRFToken":
                             getCSRFToken()
 
@@ -1126,7 +1781,13 @@ async function sendQuery(
                         JSON.stringify({
 
                             question:
+<<<<<<< HEAD
                                 buildQuestion(intent)
+=======
+                                buildQuestion(
+                                    intent
+                                )
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
                         })
 
@@ -1134,7 +1795,13 @@ async function sendQuery(
             );
 
 
+<<<<<<< HEAD
         removeTyping(typingID);
+=======
+        removeTyping(
+            typingID
+        );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
         if (!response.ok) {
@@ -1191,7 +1858,13 @@ async function sendQuery(
 
     } catch (error) {
 
+<<<<<<< HEAD
         removeTyping(typingID);
+=======
+        removeTyping(
+            typingID
+        );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
         console.error(
@@ -1200,6 +1873,7 @@ async function sendQuery(
         );
 
 
+<<<<<<< HEAD
         /*
         -----------------------------------------------------
         IMPORTANT:
@@ -1207,6 +1881,8 @@ async function sendQuery(
         -----------------------------------------------------
         */
 
+=======
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         const fallback =
             generateLocalAnswer(
                 intent
@@ -1224,7 +1900,11 @@ async function sendQuery(
 
 
 /* =========================================================
+<<<<<<< HEAD
    BUILD QUESTION FOR ENGINE
+=======
+   BUILD QUESTION
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 ========================================================= */
 
 function buildQuestion(intent) {
@@ -1292,8 +1972,16 @@ function generateLocalAnswer(intent) {
         case "ABOUT_PLACE":
 
             return `
+<<<<<<< HEAD
                 <div class="response-heading">
                     📖 About ${escapeHTML(data.name)}
+=======
+
+                <div class="response-heading">
+                    📖 About ${escapeHTML(
+                        data.name
+                    )}
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 </div>
 
                 <p>
@@ -1302,14 +1990,26 @@ function generateLocalAnswer(intent) {
                         "Information unavailable."
                     )}
                 </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
 
         case "HISTORY":
 
             return `
+<<<<<<< HEAD
                 <div class="response-heading">
                     🏛 History of ${escapeHTML(data.name)}
+=======
+
+                <div class="response-heading">
+                    🏛 History of ${escapeHTML(
+                        data.name
+                    )}
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 </div>
 
                 <p>
@@ -1318,14 +2018,26 @@ function generateLocalAnswer(intent) {
                         "Historical information is currently unavailable."
                     )}
                 </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
 
         case "ENTRY_FEE":
 
             return `
+<<<<<<< HEAD
                 <div class="response-heading">
                     🎟 Entry Fee — ${escapeHTML(data.name)}
+=======
+
+                <div class="response-heading">
+                    🎟 Entry Fee — ${escapeHTML(
+                        data.name
+                    )}
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 </div>
 
                 <p>
@@ -1343,12 +2055,20 @@ function generateLocalAnswer(intent) {
                         "Not available"
                     )}
                 </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
 
         case "BEST_TIME":
 
             return `
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 <div class="response-heading">
                     🕐 Best Time to Visit
                 </div>
@@ -1364,6 +2084,7 @@ function generateLocalAnswer(intent) {
                 ${
                     data.best_time_suggestion
                         ? `
+<<<<<<< HEAD
                         <p>
                             💡 ${escapeHTML(
                                 data.best_time_suggestion
@@ -1372,12 +2093,27 @@ function generateLocalAnswer(intent) {
                         `
                         : ""
                 }
+=======
+                            <p>
+                                💡 ${escapeHTML(
+                                    data.best_time_suggestion
+                                )}
+                            </p>
+                          `
+                        : ""
+                }
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
 
         case "AWARENESS":
 
             return `
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 <div class="response-heading">
                     💡 Travel Tips
                 </div>
@@ -1389,12 +2125,20 @@ function generateLocalAnswer(intent) {
                         "Travel tips are currently unavailable."
                     )}
                 </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
 
         case "DURATION":
 
             return `
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 <div class="response-heading">
                     🕐 Recommended Duration
                 </div>
@@ -1405,19 +2149,35 @@ function generateLocalAnswer(intent) {
                         "Not available"
                     )}
                 </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
 
         default:
 
             return `
+<<<<<<< HEAD
                 <div class="response-heading">
                     ✨ ${escapeHTML(data.name)}
+=======
+
+                <div class="response-heading">
+                    ✨ ${escapeHTML(
+                        data.name
+                    )}
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
                 </div>
 
                 <p>
                     Information is currently unavailable.
                 </p>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             `;
 
     }
@@ -1426,7 +2186,11 @@ function generateLocalAnswer(intent) {
 
 
 /* =========================================================
+<<<<<<< HEAD
    INTELLIGENT MAP ROUTE
+=======
+   GOOGLE MAPS ROUTE
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 ========================================================= */
 
 function handleRoute() {
@@ -1443,9 +2207,13 @@ function handleRoute() {
 
 
     const name =
+<<<<<<< HEAD
         currentPlaceData.name ||
         currentPlace ||
         "Destination";
+=======
+        currentPlaceData.name;
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
     const latitude =
@@ -1456,6 +2224,7 @@ function handleRoute() {
         currentPlaceData.longitude;
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     CHECK COORDINATES
@@ -1508,10 +2277,58 @@ function handleRoute() {
     ---------------------------------------------------------
     */
 
+=======
+    let googleMapsURL = "";
+
+
+    if (
+        latitude !== undefined &&
+        latitude !== null &&
+        latitude !== "" &&
+        longitude !== undefined &&
+        longitude !== null &&
+        longitude !== ""
+    ) {
+
+        googleMapsURL =
+            "https://www.google.com/maps/dir/?api=1" +
+            "&destination=" +
+            encodeURIComponent(
+                `${latitude},${longitude}`
+            );
+
+    }
+
+    else if (
+        currentPlaceData.google_maps_url
+    ) {
+
+        googleMapsURL =
+            currentPlaceData.google_maps_url;
+
+    }
+
+    else {
+
+        googleMapsURL =
+            "https://www.google.com/maps/dir/?api=1" +
+            "&destination=" +
+            encodeURIComponent(
+                name
+            );
+
+    }
+
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     appendMessage(
         "bot",
 
         `
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         <div class="response-heading">
             🗺 Intelligent Route Agent
         </div>
@@ -1524,15 +2341,21 @@ function handleRoute() {
         </p>
 
         <p>
+<<<<<<< HEAD
             Intelligent Map is ready with
             <strong>
                 ${escapeHTML(name)}
             </strong>
             as your destination.
+=======
+            Google Maps will calculate the route
+            from your current location to this destination.
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         </p>
 
         <button
             class="chat-route-button"
+<<<<<<< HEAD
             onclick="openIntelligentMap('${escapeAttribute(mapURL)}')">
 
             <i class="fa-solid fa-route"></i>
@@ -1541,31 +2364,63 @@ function handleRoute() {
 
         </button>
         `
+=======
+            onclick="openGoogleMaps('${escapeAttribute(
+                googleMapsURL
+            )}')">
+
+            <i class="fa-solid fa-map-location-dot"></i>
+
+            Open in Google Maps
+
+        </button>
+
+        `
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     );
 
 }
 
 
 /* =========================================================
+<<<<<<< HEAD
    OPEN INTELLIGENT MAP
 ========================================================= */
 
 function openIntelligentMap(url) {
+=======
+   OPEN GOOGLE MAPS
+========================================================= */
+
+function openGoogleMaps(url) {
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     if (!url) {
         return;
     }
 
 
+<<<<<<< HEAD
     window.location.href =
         url;
+=======
+    window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+    );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 }
 
 
 /* =========================================================
    KEEP OLD FUNCTION NAME
+<<<<<<< HEAD
    HTML MAY ALREADY USE THIS
+=======
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 ========================================================= */
 
 function openIntelligentRoute() {
@@ -1716,11 +2571,17 @@ function formatBotResponse(text) {
         escapeHTML(text);
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     BOLD
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       BOLD
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     html =
         html.replace(
@@ -1729,11 +2590,17 @@ function formatBotResponse(text) {
         );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     HEADINGS
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       HEADINGS
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     html =
         html.replace(
@@ -1742,11 +2609,17 @@ function formatBotResponse(text) {
         );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     BULLET POINTS
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       BULLETS
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     html =
         html.replace(
@@ -1755,11 +2628,17 @@ function formatBotResponse(text) {
         );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     NUMBERED LIST
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       NUMBERED LIST
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     html =
         html.replace(
@@ -1768,11 +2647,17 @@ function formatBotResponse(text) {
         );
 
 
+<<<<<<< HEAD
     /*
     ---------------------------------------------------------
     LINE BREAKS
     ---------------------------------------------------------
     */
+=======
+    /* -----------------------------------------------------
+       LINE BREAKS
+    ----------------------------------------------------- */
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     html =
         html.replace(
@@ -1799,9 +2684,13 @@ function showTyping() {
 
 
     if (!container) {
+<<<<<<< HEAD
 
         return null;
 
+=======
+        return null;
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     }
 
 
@@ -1922,6 +2811,10 @@ function toggleSidebar(side) {
             "open"
         );
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         showOverlay();
 
     }
@@ -2084,7 +2977,13 @@ function showSection(section) {
     );
 
 
+<<<<<<< HEAD
     closeSidebar("left");
+=======
+    closeSidebar(
+        "left"
+    );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 }
 
@@ -2124,6 +3023,7 @@ function scrollChatToBottom() {
 
 
 /* =========================================================
+<<<<<<< HEAD
    SET TEXT
 ========================================================= */
 
@@ -2131,6 +3031,118 @@ function setText(id, value) {
 
     const element =
         document.getElementById(id);
+=======
+   SEARCH FILTER
+========================================================= */
+
+function initializeSearch() {
+
+    const searchInput =
+        document.getElementById(
+            "place-search"
+        );
+
+
+    if (!searchInput) {
+
+        console.log(
+            "Search box NOT found on this page."
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "Search box found! Ready to filter."
+    );
+
+
+    searchInput.addEventListener(
+        "input",
+        function (event) {
+
+            const searchTerm =
+                event.target.value
+                    .toLowerCase()
+                    .trim();
+
+
+            const placeCards =
+                document.querySelectorAll(
+                    ".place-card"
+                );
+
+
+            placeCards.forEach(
+                function (card) {
+
+                    const nameElement =
+                        card.querySelector(
+                            "h4"
+                        );
+
+
+                    const categoryElement =
+                        card.querySelector(
+                            ".place-category"
+                        );
+
+
+                    const placeName =
+                        nameElement
+                            ? nameElement.textContent
+                                .toLowerCase()
+                                .trim()
+                            : "";
+
+
+                    const placeCategory =
+                        categoryElement
+                            ? categoryElement.textContent
+                                .toLowerCase()
+                                .trim()
+                            : "";
+
+
+                    const matches =
+                        placeName.includes(
+                            searchTerm
+                        ) ||
+                        placeCategory.includes(
+                            searchTerm
+                        );
+
+
+                    card.style.display =
+                        matches
+                            ? ""
+                            : "none";
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SET TEXT
+========================================================= */
+
+function setText(
+    id,
+    value
+) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 
     if (element) {
@@ -2295,6 +3307,7 @@ function escapeAttribute(value) {
             "&gt;"
         );
 
+<<<<<<< HEAD
 }
 
 
@@ -2411,3 +3424,6 @@ document.addEventListener(
 
     }
 );
+=======
+}
+>>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
