@@ -1,0 +1,899 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Dekho Bharat | Shristi AI</title>
+
+    <!-- Main CSS -->
+    <link rel="stylesheet"
+          href="{% static 'chatbot/chatbot.css' %}">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet"
+          href="{% static 'css/app_shell.css' %}">
+
+</head>
+
+
+<body data-map-url="/map/">
+
+{% include "includes/app_sidebar.html" %}
+
+<div class="dekho-app">
+
+
+    <!-- =====================================================
+         MOBILE OVERLAY
+    ====================================================== -->
+
+    <div class="mobile-overlay"
+         id="mobile-overlay"
+         onclick="closeAllSidebars()">
+    </div>
+
+
+
+    <!-- =====================================================
+         MAIN CHAT AREA
+    ====================================================== -->
+
+    <main class="chat-main">
+
+
+        <!-- =================================================
+             HEADER
+        ================================================== -->
+
+        <header class="chat-header">
+
+
+            <!-- Mobile left menu -->
+
+            <button class="header-icon mobile-menu"
+                    onclick="toggleGpSidebar()">
+
+                <i class="fa-solid fa-bars"></i>
+
+            </button>
+
+
+
+            <!-- Header title -->
+
+            <div class="header-center">
+
+                <div class="dekho-logo-small">
+
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+
+                </div>
+
+                <div>
+
+                    <h2>Shristi AI</h2>
+
+                    <div class="online-status">
+
+                        <span class="status-dot"></span>
+
+                        AI Travel Assistant
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Mobile right menu -->
+
+            <button class="header-icon mobile-menu"
+                    onclick="toggleSidebar('right')">
+
+                <i class="fa-solid fa-circle-info"></i>
+
+            </button>
+
+
+        </header>
+
+
+
+        <!-- =================================================
+             CHAT CONTENT
+        ================================================== -->
+
+        <section class="chat-content"
+                 id="chat-history">
+
+
+            <!-- Welcome Message -->
+
+            <div class="welcome-section">
+
+
+                <div class="bot-avatar-large">
+
+                    <i class="fa-solid fa-compass"></i>
+
+                </div>
+
+
+                <div class="welcome-text">
+
+                    <span class="welcome-label">
+                        NAMASTE · SHIRSTI
+                    </span>
+
+                    <h2>
+                        Explore Bharat with Shirsti
+                    </h2>
+
+                    <p>
+                        Select a destination below and ask me
+                        anything about the place.
+                    </p>
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- =================================================
+                 PLACE SELECTION
+            ================================================== -->
+
+            <section class="place-selection"
+                     id="explore-section">
+
+
+                <div class="section-heading">
+
+                    <div>
+
+                        <span class="section-label">
+                            EXPLORE
+                        </span>
+
+                        <h3>
+                            Where would you like to go?
+                        </h3>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================================
+                     NEW SEARCH BOX AREA
+                ================================================== -->
+                <div class="search-container">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="place-search" placeholder="Search for a destination..." autocomplete="off">
+                    </div>
+                </div>
+
+
+                <!-- Place Cards -->
+
+                <div class="place-grid"
+                     id="explore-grid">
+
+
+                    <!-- Red Fort -->
+
+                    <article class="place-card"
+                             onclick="selectPlace('Red Fort')">
+
+
+                        <div class="place-image-wrapper">
+
+                            <img
+                                src="https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=900&q=85"
+                                alt="Red Fort">
+
+                            <span class="place-category">
+                                Historical
+                            </span>
+
+                        </div>
+
+
+                        <div class="place-card-content">
+
+                            <h4>
+                                Red Fort
+                            </h4>
+
+                            <p>
+                                Discover Mughal history,
+                                architecture and culture.
+                            </p>
+
+
+                            <div class="place-card-bottom">
+
+                                <span>
+
+                                    <i class="fa-solid fa-location-dot"></i>
+
+                                    Old Delhi
+
+                                </span>
+
+                                <span class="explore-arrow">
+
+                                    Explore
+                                    <i class="fa-solid fa-arrow-right"></i>
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </article>
+
+
+
+                    <!-- India Gate -->
+
+                    <article class="place-card"
+                             onclick="selectPlace('India Gate')">
+
+
+                        <div class="place-image-wrapper">
+
+                            <img
+                                src="https://images.unsplash.com/photo-1585135451631-7b0035515286?auto=format&fit=crop&w=900&q=85"
+                                alt="India Gate">
+
+                            <span class="place-category">
+                                Monument
+                            </span>
+
+                        </div>
+
+
+                        <div class="place-card-content">
+
+                            <h4>
+                                India Gate
+                            </h4>
+
+                            <p>
+                                Visit one of Delhi's most
+                                iconic national monuments.
+                            </p>
+
+
+                            <div class="place-card-bottom">
+
+                                <span>
+
+                                    <i class="fa-solid fa-location-dot"></i>
+
+                                    New Delhi
+
+                                </span>
+
+                                <span class="explore-arrow">
+
+                                    Explore
+                                    <i class="fa-solid fa-arrow-right"></i>
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                    </article>
+
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =================================================
+                 SELECTED PLACE MESSAGE AREA
+            ================================================== -->
+
+            <div id="selected-place-area"
+                 class="selected-place-area"
+                 style="display:none;">
+
+
+                <div class="selected-place-card">
+
+
+                    <div class="selected-place-icon">
+
+                        <i class="fa-solid fa-location-dot"></i>
+
+                    </div>
+
+
+                    <div>
+
+                        <span class="selected-label">
+                            CURRENTLY EXPLORING
+                        </span>
+
+                        <h3 id="selected-place-name">
+                            Red Fort
+                        </h3>
+
+                    </div>
+
+
+                    <button
+                        class="change-place-btn"
+                        onclick="changePlace()">
+
+                        <i class="fa-solid fa-arrows-rotate"></i>
+
+                        Change
+
+                    </button>
+
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- =================================================
+                 BOT MESSAGES
+            ================================================== -->
+
+            <div id="messages-container"
+                 class="messages-container">
+
+
+                <!-- Messages inserted by JavaScript -->
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             ACTION PANEL
+        ================================================== -->
+
+        <section class="action-panel"
+                 id="action-panel"
+                 style="display:none;">
+
+
+            <div class="action-header">
+
+                <div>
+
+                    <span class="section-label">
+                        DEKHO AI
+                    </span>
+
+                    <h3>
+                        What would you like to know?
+                    </h3>
+
+                    <p>
+                        Choose a question and I'll tell you
+                        about this destination.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="action-grid">
+
+
+                <!-- About -->
+
+                <button class="action-card"
+                        onclick="sendQuery(
+                            'ABOUT_PLACE',
+                            '📖 Tell me about this place'
+                        )">
+
+                    <span class="action-icon about">
+                        <i class="fa-solid fa-book-open"></i>
+                    </span>
+
+                    <span class="action-text">
+
+                        <strong>
+                            About this place
+                        </strong>
+
+                        <small>
+                            Quick overview
+                        </small>
+
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                </button>
+
+
+
+                <!-- History -->
+
+                <button class="action-card"
+                        onclick="sendQuery(
+                            'HISTORY',
+                            '🏛 Tell me the history'
+                        )">
+
+                    <span class="action-icon history">
+                        <i class="fa-solid fa-landmark"></i>
+                    </span>
+
+                    <span class="action-text">
+
+                        <strong>
+                            History
+                        </strong>
+
+                        <small>
+                            Discover its past
+                        </small>
+
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                </button>
+
+
+
+                <!-- Entry Fee -->
+
+                <button class="action-card"
+                        onclick="sendQuery(
+                            'ENTRY_FEE',
+                            '🎟 What is the entry fee?'
+                        )">
+
+                    <span class="action-icon fee">
+                        <i class="fa-solid fa-ticket"></i>
+                    </span>
+
+                    <span class="action-text">
+
+                        <strong>
+                            Entry Fee
+                        </strong>
+
+                        <small>
+                            Indian & foreign visitors
+                        </small>
+
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                </button>
+
+
+
+                <!-- Best Time -->
+
+                <button class="action-card"
+                        onclick="sendQuery(
+                            'BEST_TIME',
+                            '🕐 When should I visit?'
+                        )">
+
+                    <span class="action-icon time">
+                        <i class="fa-regular fa-clock"></i>
+                    </span>
+
+                    <span class="action-text">
+
+                        <strong>
+                            Best Time
+                        </strong>
+
+                        <small>
+                            Plan your visit
+                        </small>
+
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                </button>
+
+
+
+                <!-- Route -->
+
+                <button class="action-card route-action"
+                        onclick="sendQuery(
+                            'ROUTE',
+                            '📍 How can I reach this place?'
+                        )">
+
+                    <span class="action-icon route">
+                        <i class="fa-solid fa-route"></i>
+                    </span>
+
+                    <span class="action-text">
+
+                        <strong>
+                            How to Reach
+                        </strong>
+
+                        <small>
+                            Find the best route
+                        </small>
+
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                </button>
+
+
+
+                <!-- Awareness -->
+
+                <button class="action-card"
+                        onclick="sendQuery(
+                            'AWARENESS',
+                            '💡 Give me some travel tips'
+                        )">
+
+                    <span class="action-icon tips">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </span>
+
+                    <span class="action-text">
+
+                        <strong>
+                            Travel Tips
+                        </strong>
+
+                        <small>
+                            Things to know
+                        </small>
+
+                    </span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                </button>
+
+
+            </div>
+
+
+
+            <!-- More questions -->
+
+            <div class="question-suggestion">
+
+                <i class="fa-solid fa-circle-question"></i>
+
+                <span>
+                    Want to know something else about this place?
+                </span>
+
+            </div>
+
+
+        </section>
+
+
+    </main>
+
+
+
+    <!-- =====================================================
+         RIGHT PLACE DETAILS SIDEBAR
+    ====================================================== -->
+
+    <aside class="right-sidebar"
+           id="right-sidebar">
+
+
+        <!-- Close button -->
+
+        <button class="sidebar-close right-close"
+                onclick="closeSidebar('right')">
+
+            <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+
+
+        <!-- Empty state -->
+
+        <div class="details-empty"
+             id="details-empty-state">
+
+
+            <div class="empty-icon">
+
+                <i class="fa-solid fa-map-location-dot"></i>
+
+            </div>
+
+
+            <h3>
+                Explore a destination
+            </h3>
+
+
+            <p>
+                Select a place to see its
+                details, location and travel information.
+            </p>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             PLACE DETAILS
+        ================================================== -->
+
+        <div class="details-content"
+             id="details-content"
+             style="display:none;">
+
+
+            <!-- Place Image -->
+
+            <div class="details-image-wrapper">
+
+
+                <img id="panel-image"
+                     src=""
+                     alt="Place Image"
+                     class="details-main-image">
+
+
+                <button class="image-close-btn"
+                        onclick="closeSidebar('right')">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+
+                <div class="image-gradient"></div>
+
+
+                <div class="details-image-title">
+
+                    <span id="panel-category">
+                        Historical
+                    </span>
+
+                    <h2 id="panel-title">
+                        Red Fort
+                    </h2>
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- Details Body -->
+
+            <div class="details-body">
+
+
+                <!-- Location & Rating -->
+
+                <div class="place-meta">
+
+
+                    <div class="meta-item">
+
+                        <i class="fa-solid fa-location-dot"></i>
+
+                        <div>
+
+                            <small>
+                                Location
+                            </small>
+
+                            <strong id="panel-location">
+                                Old Delhi
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="meta-item">
+
+                        <i class="fa-solid fa-star"></i>
+
+                        <div>
+
+                            <small>
+                                Rating
+                            </small>
+
+                            <strong id="panel-rating">
+                                4.7
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+
+
+                <!-- Description -->
+
+                <div class="details-section">
+
+                    <span class="details-label">
+                        ABOUT
+                    </span>
+
+                    <p id="panel-desc"
+                       class="place-description">
+
+                    </p>
+
+                </div>
+
+
+
+                <!-- Quick Facts -->
+
+                <div class="details-section">
+
+                    <span class="details-label">
+                        QUICK INFORMATION
+                    </span>
+
+
+                    <div class="quick-facts">
+
+
+                        <!-- Best Time -->
+
+                        <div class="quick-fact">
+
+                            <div class="quick-fact-icon">
+
+                                <i class="fa-regular fa-clock"></i>
+
+                            </div>
+
+                            <div>
+
+                                <small>
+                                    Best Time
+                                </small>
+
+                                <strong id="panel-time">
+                                    October – March
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Entry Fee -->
+
+                        <div class="quick-fact">
+
+                            <div class="quick-fact-icon">
+
+                                <i class="fa-solid fa-ticket"></i>
+
+                            </div>
+
+                            <div>
+
+                                <small>
+                                    Entry Fee
+                                </small>
+
+                                <strong id="panel-fee">
+                                    Indian: ₹35 | Foreign: ₹500
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Route Button -->
+
+                <div class="details-route">
+
+                    <button class="route-button"
+                            onclick="openIntelligentRoute()">
+
+                        <span>
+
+                            <i class="fa-solid fa-route"></i>
+
+                            Find Your Best Route
+
+                        </span>
+
+                        <i class="fa-solid fa-arrow-right"></i>
+
+                    </button>
+                   
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+    </aside>
+
+
+</div>
+
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================== -->
+
+<script src="{% static 'chatbot/chatbot.js' %}"></script>
+
+
+</body>
+
+</html>

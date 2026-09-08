@@ -1,0 +1,3474 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f9ff">
+
+    <title>Dekho Bharat · GoPlane</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=10">
+    <link rel="stylesheet" href="{% static 'css/app_shell.css' %}">
+</head>
+
+<body>
+{% include "includes/app_sidebar.html" %}
+
+<div class="app">
+
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
+    <aside class="sidebar" id="sideMenu">
+
+        <div class="side-head">
+
+            <a class="brand" href="#home" onclick="closeMenu()">
+
+                <span class="brand-mark">✦</span>
+
+                <span>
+                    <b class="tricolor-brand">Dekho Bharat</b>
+                    <small>GoPlane · Your places</small>
+                </span>
+
+            </a>
+
+            <button
+                class="side-close"
+                type="button"
+                onclick="closeMenu()">
+                ×
+            </button>
+
+        </div>
+
+
+        <nav class="side-nav">
+
+            <!-- GoPlane -->
+            <a
+                class="nav-link active"
+                href="#home"
+                onclick="closeMenu()">
+
+                <span class="nav-symbol home">⌂</span>
+
+                <span>
+                    <b>GoPlane</b>
+                    <small>Discover places</small>
+                </span>
+
+            </a>
+
+
+            <!-- Native Language -->
+            <a
+                class="nav-link"
+                href="/native/"
+                onclick="closeMenu()">
+
+                <span class="nav-symbol language">अ</span>
+
+                <span>
+                    <b>Native language</b>
+                    <small>Speak & translate</small>
+                </span>
+
+            </a>
+
+
+            <!-- Intelligent Map -->
+            <button
+                class="nav-link"
+                type="button"
+                onclick="window.location.href='/map/'">
+
+                <span class="nav-symbol map">⌖</span>
+
+                <span>
+                    <b>Intelligent map</b>
+                    <small>Smart navigation</small>
+                </span>
+
+            </button>
+
+            <button
+                class="nav-link"
+                type="button"
+                onclick="window.location.href='/shristi/'">
+                <span class="nav-symbol home">✦</span>
+                <span>
+                    <b>Shristi AI</b>
+                    <small>Your travel assistant</small>
+                </span>
+            </button>
+
+            <button
+                class="nav-link"
+                type="button"
+                onclick="window.location.href='/trips/'">
+                <span class="nav-symbol map">▣</span>
+                <span>
+                    <b>Trip history</b>
+                    <small>Saved journeys</small>
+                </span>
+            </button>
+
+
+            <!-- SOS -->
+            <button
+                class="nav-link"
+                type="button"
+                onclick="showPanel('sos')">
+
+                <span class="nav-symbol sos">SOS</span>
+
+                <span>
+                    <b>SOS</b>
+                    <small>Emergency help</small>
+                </span>
+
+            </button>
+
+        </nav>
+
+
+        <!-- Sidebar bottom -->
+        <div class="side-bottom">
+
+            <button
+                class="profile-card"
+                type="button"
+                onclick="showPanel('profile')">
+
+                <span class="avatar">
+                    {{ user_name|slice:":1"|upper }}
+                </span>
+
+                <span>
+                    <b>{{ user_name }}</b>
+                    <small>Profile</small>
+                </span>
+
+                <span class="arrow">›</span>
+
+            </button>
+
+
+            <button
+                class="trip-link"
+                type="button"
+                onclick="showPanel('history')">
+
+                <span>▣</span>
+
+                Trip history
+
+                <b>›</b>
+
+            </button>
+
+
+            <small class="version">
+                v1.0.0 · {{ total_places }} places
+            </small>
+
+        </div>
+
+    </aside>
+
+
+    <!-- Sidebar backdrop -->
+    <div
+        class="backdrop"
+        onclick="closeMenu()">
+    </div>
+
+
+    <!-- Hamburger -->
+    <button
+        class="menu-btn"
+        type="button"
+        onclick="toggleMenu()"
+        aria-label="Open menu">
+
+        <span></span>
+        <span></span>
+        <span></span>
+
+    </button>
+
+
+    <!-- =========================
+         MAIN
+    ========================== -->
+
+    <main>
+
+        <!-- Top bar -->
+        <header class="topbar">
+
+            <div class="mobile-brand">
+
+                <b class="tricolor-brand">
+                    Dekho Bharat
+                </b>
+
+                <small>
+                    GoPlane · Your places
+                </small>
+
+            </div>
+
+
+            <div class="top-status">
+
+                <span class="online-dot"></span>
+
+                Explore with GoPlane
+
+                <span class="top-avatar">
+                    {{ user_name|slice:":1"|upper }}
+                </span>
+
+            </div>
+
+        </header>
+
+
+        <!-- =========================
+             HERO / WELCOME
+        ========================== -->
+
+        <section
+            class="intro"
+            id="home">
+
+            <div class="intro-copy">
+
+                <span class="eyebrow">
+                    <i></i>
+                    INTELLIGENT TRAVEL
+                </span>
+
+
+                <h1>
+                    Welcome {{ user_name }}
+                    <span>👋</span>
+                </h1>
+
+
+                <p>
+                    Explore India like never before
+                    <span>🇮🇳</span>
+                </p>
+
+
+                <!-- SEARCH -->
+                <form
+                    method="POST"
+                    class="search-form">
+
+                    {% csrf_token %}
+
+                    <span class="search-icon">
+                        ⌕
+                    </span>
+
+
+                    <input
+                        type="text"
+                        name="description"
+                        value="{{ query }}"
+                        placeholder="What is in your mind today?"
+                        autocomplete="off"
+                        required>
+
+
+                    <button
+                        class="voice"
+                        type="button"
+                        onclick="showToast('Voice search will be connected soon.')">
+
+                        ♩
+
+                    </button>
+
+
+                    <button
+                        class="search-submit"
+                        type="submit">
+
+                        →
+
+                    </button>
+
+                </form>
+
+
+                <!-- Suggestions -->
+                <div class="suggestions">
+
+                    <span>Explore by</span>
+
+                    <button
+                        type="button"
+                        onclick="fillSearch('historical forts')">
+                        History
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="fillSearch('peaceful gardens and lakes')">
+                        Nature
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="fillSearch('spiritual places')">
+                        Spiritual
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Decorative India artwork -->
+            <div
+                class="intro-art"
+                aria-hidden="true">
+
+                <span class="sun"></span>
+
+                <span class="cloud cloud-a"></span>
+
+                <span class="cloud cloud-b"></span>
+
+                <div class="dome"></div>
+
+                <div class="minar">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <b></b>
+                </div>
+
+                <div class="arch"></div>
+
+                <div class="green-hills"></div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             SELECTED / RECOMMENDED PLACE
+        ========================== -->
+
+        {% if main_place %}
+
+        <section
+            class="section result-section"
+            id="result">
+
+            <div class="section-title">
+
+                <div>
+
+                    <small>
+                        YOUR GOPLAN MATCH
+                    </small>
+
+                    <h2>
+                        Made for your mood
+                    </h2>
+
+                </div>
+
+
+                <span
+                    class="query"
+                    id="matchQuery">
+
+                    {% if query %}
+                        “{{ query }}”
+                    {% else %}
+                        Popular pick
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+
+            <article class="main-place">
+
+                <!-- =====================
+                     IMAGE GALLERY
+                ====================== -->
+
+                <div class="main-image">
+
+                    <div
+                        class="gallery"
+                        id="gallery">
+
+                        {% for image in main_place.images %}
+
+                        <div
+                            class="slide {% if forloop.first %}active{% endif %}">
+
+                            <!--
+                                IMPORTANT:
+                                Store original dataset path in data-image.
+                                JavaScript converts it to /static/...
+                            -->
+
+                            <img
+                                data-image="{{ image }}"
+                                alt="{{ main_place.name }}"
+                                loading="lazy">
+
+
+                            <div class="image-fallback large">
+
+                                <span>✦</span>
+
+                                <b>
+                                    {{ main_place.name }}
+                                </b>
+
+                                <small>
+                                    {{ main_place.location }}
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                        {% empty %}
+
+                        <div class="slide active">
+
+                            <div class="image-fallback large show">
+
+                                <span>✦</span>
+
+                                <b>
+                                    {{ main_place.name }}
+                                </b>
+
+                                <small>
+                                    {{ main_place.location }}
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <span class="pick-badge">
+                        GoPlane pick ✦
+                    </span>
+
+
+                    <button
+                        class="gallery-button prev"
+                        type="button"
+                        onclick="slide(-1)">
+
+                        ‹
+
+                    </button>
+
+
+                    <button
+                        class="gallery-button next"
+                        type="button"
+                        onclick="slide(1)">
+
+                        ›
+
+                    </button>
+
+
+                    <div class="gallery-count">
+
+                        <span id="slideNumber">
+                            1
+                        </span>
+
+                        /
+
+                        <span id="slideTotal">
+                            {{ main_place.images|length|default:"1" }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =====================
+                     PLACE INFORMATION
+                ====================== -->
+
+                <div class="main-info">
+
+                    <div class="place-meta">
+
+                        <span
+                            class="tag"
+                            id="mainCategory">
+
+                            {{ main_place.broad_category }}
+
+                        </span>
+
+
+                        <span
+                            class="rating"
+                            id="mainRating">
+
+                            ★ {{ main_place.rating }}
+
+                        </span>
+
+                    </div>
+
+
+                    <h3 id="mainName">
+
+                        {{ main_place.name }}
+
+                    </h3>
+
+
+                    <p
+                        class="description"
+                        id="mainDescription">
+
+                        {{ main_place.description }}
+
+                    </p>
+
+
+                    <div class="facts">
+
+                        <div>
+
+                            <span>⌖</span>
+
+                            <small>
+                                Location
+                            </small>
+
+                            <b id="mainLocation">
+                                {{ main_place.location }}
+                            </b>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>◷</span>
+
+                            <small>
+                                Best time
+                            </small>
+
+                            <b id="mainBestTime">
+                                {{ main_place.best_time }}
+                            </b>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Buttons -->
+                    <div class="actions">
+
+                        <button
+                            type="button"
+                            onclick="route()">
+
+                            ⌖ Route
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="light"
+                            onclick="toggleHistory()">
+
+                            ▤ History
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="light"
+                            onclick="showWeather()">
+
+                            ☼ Weather
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- HISTORY -->
+
+                    <div
+                        class="info-panel"
+                        id="history">
+
+                        <b>
+                            Heritage notes
+                        </b>
+
+                        <p id="historyText">
+                            {{ main_place.history }}
+                        </p>
+
+                    </div>
+
+
+                    <!-- WEATHER -->
+
+                    <div
+                        class="info-panel weather show"
+                        id="weather">
+
+                        <div
+                            class="weather-icon"
+                            id="weatherIcon">
+
+                            ⌛
+
+                        </div>
+
+
+                        <div class="weather-copy">
+
+                            <small id="weatherLabel">
+                                LIVE WEATHER
+                            </small>
+
+
+                            <b id="weatherTitle">
+                                Loading current weather…
+                            </b>
+
+
+                            <p id="weatherDetails">
+                                Checking current weather for
+                                {{ main_place.name }}.
+                            </p>
+
+
+                            <div
+                                class="weather-stats"
+                                id="weatherStats">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+        </section>
+
+        {% endif %}
+
+
+        <!-- =========================
+             RECOMMENDATIONS
+        ========================== -->
+
+        <section
+            class="section"
+            id="places">
+
+            <div class="section-title">
+
+                <div>
+
+                    <small id="recommendationLabel">
+
+                        {% if main_place %}
+                            EXPLORE MORE FROM YOUR DATASET
+                        {% else %}
+                            DISCOVER BHARAT
+                        {% endif %}
+
+                    </small>
+
+
+                    <h2 id="recommendationHeading">
+
+                        {% if main_place %}
+                            Recommended places
+                        {% else %}
+                            Famous places
+                        {% endif %}
+
+                    </h2>
+
+                </div>
+
+
+                <span>
+                    {{ total_places }} places
+                </span>
+
+            </div>
+
+
+            <div
+                class="cards"
+                id="recommendationCards">
+
+
+                <!-- Server rendered recommendations -->
+
+                {% for place in recommendations %}
+
+                <article
+                    class="card selectable-card"
+                    onclick="selectPlace(event, '{{ place.name|escapejs }}')">
+
+
+                    <div class="card-image">
+
+                        {% if place.images.0 %}
+
+                        <img
+                            data-image="{{ place.images.0 }}"
+                            alt="{{ place.name }}"
+                            loading="lazy">
+
+                        {% endif %}
+
+
+                        <div class="image-fallback">
+
+                            <span>✦</span>
+
+                            <b>
+                                {{ place.name }}
+                            </b>
+
+                        </div>
+
+
+                        <span class="card-rating">
+
+                            ★ {{ place.rating }}
+
+                        </span>
+
+                    </div>
+
+
+                    <div class="card-body">
+
+                        <h3>
+                            {{ place.name }}
+                        </h3>
+
+
+                        <p>
+                            {{ place.category }}
+                        </p>
+
+
+                        <small>
+                            ⌖ {{ place.location }}
+                        </small>
+
+
+                        <div class="card-actions">
+
+                            <button
+                                type="button"
+                                onclick="openHistory(
+                                    event,
+                                    '{{ place.name|escapejs }}',
+                                    '{{ place.history|escapejs }}'
+                                )">
+
+                                History
+
+                            </button>
+
+
+                            <button
+                                type="button"
+                                onclick="routeTo(
+                                    event,
+                                    '{{ place.latitude }}',
+                                    '{{ place.longitude }}'
+                                )">
+
+                                ⌖ Route
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                {% empty %}
+
+
+                {% for place in popular_places %}
+
+                <article
+                    class="card selectable-card"
+                    onclick="selectPlace(event, '{{ place.name|escapejs }}')">
+
+
+                    <div class="card-image">
+
+                        {% if place.images.0 %}
+
+                        <img
+                            data-image="{{ place.images.0 }}"
+                            alt="{{ place.name }}"
+                            loading="lazy">
+
+                        {% endif %}
+
+
+                        <div class="image-fallback">
+
+                            <span>✦</span>
+
+                            <b>
+                                {{ place.name }}
+                            </b>
+
+                        </div>
+
+
+                        <span class="card-rating">
+                            ★ {{ place.rating }}
+                        </span>
+
+                    </div>
+
+
+                    <div class="card-body">
+
+                        <h3>
+                            {{ place.name }}
+                        </h3>
+
+
+                        <p>
+                            {{ place.category }}
+                        </p>
+
+
+                        <small>
+                            ⌖ {{ place.location }}
+                        </small>
+
+
+                        <div class="card-actions">
+
+                            <button
+                                type="button"
+                                onclick="openHistory(
+                                    event,
+                                    '{{ place.name|escapejs }}',
+                                    '{{ place.history|escapejs }}'
+                                )">
+
+                                History
+
+                            </button>
+
+
+                            <button
+                                type="button"
+                                onclick="routeTo(
+                                    event,
+                                    '{{ place.latitude }}',
+                                    '{{ place.longitude }}'
+                                )">
+
+                                ⌖ Route
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                {% endfor %}
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             GOPLANE TIP
+        ========================== -->
+
+        <section class="tip">
+
+            <span class="tip-mark">
+                ✦
+            </span>
+
+
+            <div>
+
+                <b>
+                    GoPlane tip
+                </b>
+
+                <p>
+                    Search by mood, place type,
+                    location, or best time to visit.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                onclick="fillSearch('peaceful places for an evening visit')">
+
+                Try it →
+
+            </button>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<!-- =========================
+     SIDE MENU MODAL
+========================== -->
+
+<div
+    class="tool-modal"
+    id="toolModal"
+    aria-hidden="true">
+
+    <div
+        class="tool-backdrop"
+        onclick="closePanel()">
+    </div>
+
+
+    <div class="tool-sheet">
+
+        <button
+            class="modal-close"
+            type="button"
+            onclick="closePanel()">
+
+            ×
+
+        </button>
+
+
+        <span
+            class="tool-icon"
+            id="toolIcon">
+
+            ✦
+
+        </span>
+
+
+        <small id="toolLabel">
+            GOPLANE
+        </small>
+
+
+        <h2 id="toolTitle">
+            Your travel companion
+        </h2>
+
+
+        <p id="toolText">
+            Everything you need for a better day out.
+        </p>
+
+
+        <div
+            id="toolOptions"
+            class="tool-options">
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================
+     CHAT
+========================== -->
+
+<button
+    class="chat-fab"
+    type="button"
+    onclick="toggleChat()">
+
+    <span class="chat-pulse"></span>
+
+    <span class="chat-face">
+        ✦
+    </span>
+
+    <span class="chat-fab-label">
+        Ask GoPlane
+    </span>
+
+</button>
+
+
+<section
+    class="chat-widget"
+    id="chatWidget"
+    aria-hidden="true">
+
+    <div class="chat-head">
+
+        <div>
+
+            <b>
+                GoPlane assistant
+            </b>
+
+            <small>
+                Quick help for your journey
+            </small>
+
+        </div>
+
+
+        <button
+            type="button"
+            onclick="toggleChat()">
+
+            ×
+
+        </button>
+
+    </div>
+
+
+    <div
+        class="chat-messages"
+        id="chatMessages">
+
+        {% if main_place %}
+
+        <div class="chat-message bot">
+
+            Hi! Ask me about
+            <b>{{ main_place.name }}</b>,
+            route, history, best time,
+            or weather.
+
+        </div>
+
+        {% else %}
+
+        <div class="chat-message bot">
+
+            Hi! Ask GoPlane about
+            any place in your dataset.
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <div class="chat-suggestions">
+
+        <button
+            type="button"
+            onclick="askChat('What is the best time to visit?')">
+
+            Best time?
+
+        </button>
+
+
+        <button
+            type="button"
+            onclick="askChat('Tell me about this place')">
+
+            Tell me more
+
+        </button>
+
+    </div>
+
+
+    <form
+        class="chat-form"
+        onsubmit="sendChat(event)">
+
+        <input
+            id="chatInput"
+            autocomplete="off"
+            placeholder="Ask about this place…">
+
+
+        <button type="submit">
+            ↑
+        </button>
+
+    </form>
+
+</section>
+
+
+<div
+    class="toast"
+    id="toast">
+</div>
+
+
+<!-- Main place data -->
+{{ main_place|json_script:"main-place-data" }}
+
+
+<script>
+
+/* =========================================================
+   GLOBAL DATA
+========================================================= */
+
+const placeElement =
+    document.getElementById("main-place-data");
+
+let placeData = {};
+
+if (placeElement) {
+
+    try {
+
+        placeData =
+            JSON.parse(placeElement.textContent);
+
+    } catch (error) {
+
+        console.error(
+            "Could not read main place data:",
+            error
+        );
+
+        placeData = {};
+
+    }
+
+}
+
+
+let currentSlide = 0;
+
+let weatherRequestId = 0;
+
+let touchStart = 0;
+
+
+const $ = (selector) =>
+    document.querySelector(selector);
+
+
+
+/* =========================================================
+   IMPORTANT IMAGE FUNCTION
+========================================================= */
+
+function getImageUrl(path) {
+
+    if (!path) {
+        return "";
+    }
+
+
+    let value = String(path).trim();
+
+
+    /*
+       Convert Windows paths
+
+       images\0\image_1.jpeg
+
+       into
+
+       images/0/image_1.jpeg
+    */
+
+    value = value.replaceAll("\\", "/");
+
+
+    /*
+       Already an external image
+    */
+
+    if (
+        value.startsWith("http://") ||
+        value.startsWith("https://")
+    ) {
+
+        return value;
+
+    }
+
+
+    /*
+       Already static path
+    */
+
+    if (value.startsWith("/static/")) {
+
+        return value;
+
+    }
+
+
+    if (value.startsWith("static/")) {
+
+        return "/" + value;
+
+    }
+
+
+    /*
+       Remove leading /
+    */
+
+    value = value.replace(/^\/+/, "");
+
+
+    /*
+       Dataset:
+
+       images/0/image_1.jpeg
+
+       becomes:
+
+       /static/images/0/image_1.jpeg
+    */
+
+    if (value.startsWith("images/")) {
+
+        return "/static/" + value;
+
+    }
+
+
+    /*
+       If backend already sends:
+
+       /images/0/image.jpg
+    */
+
+    if (value.startsWith("/images/")) {
+
+        return "/static" + value;
+
+    }
+
+
+    /*
+       Final fallback
+    */
+
+    return "/static/" + value;
+
+}
+
+
+
+/* =========================================================
+   FIX ALL SERVER-RENDERED IMAGES
+========================================================= */
+
+function fixDatasetImages() {
+
+    const images =
+        document.querySelectorAll(
+            "img[data-image]"
+        );
+
+
+    images.forEach((image) => {
+
+        const original =
+            image.getAttribute("data-image");
+
+
+        if (!original) {
+            return;
+        }
+
+
+        const finalUrl =
+            getImageUrl(original);
+
+
+        console.log(
+            "Dataset image:",
+            original,
+            "=>",
+            finalUrl
+        );
+
+
+        image.src = finalUrl;
+
+
+        image.addEventListener(
+            "error",
+            function () {
+
+                console.error(
+                    "IMAGE FAILED:",
+                    finalUrl
+                );
+
+
+                image.style.display =
+                    "none";
+
+
+                const fallback =
+                    image.parentElement
+                    ?.querySelector(
+                        ".image-fallback"
+                    );
+
+
+                if (fallback) {
+
+                    fallback.classList.add(
+                        "show"
+                    );
+
+                }
+
+            },
+            {
+                once: true
+            }
+        );
+
+    });
+
+}
+
+
+
+/* =========================================================
+   MENU
+========================================================= */
+
+function toggleMenu() {
+
+    if (window.innerWidth > 760) {
+
+        document.body.classList.toggle(
+            "menu-hidden"
+        );
+
+    } else {
+
+        document.body.classList.toggle(
+            "menu-open"
+        );
+
+    }
+
+}
+
+
+function closeMenu() {
+
+    document.body.classList.remove(
+        "menu-open"
+    );
+
+    document.body.classList.remove(
+        "menu-hidden"
+    );
+
+}
+
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+function fillSearch(value) {
+
+    const input =
+        document.querySelector(
+            'input[name="description"]'
+        );
+
+
+    if (!input) {
+        return;
+    }
+
+
+    input.value = value;
+
+    input.focus();
+
+}
+
+
+function showToast(message) {
+
+    const toast = $("#toast");
+
+
+    if (!toast) {
+        return;
+    }
+
+
+    toast.textContent = message;
+
+    toast.classList.add("show");
+
+
+    clearTimeout(
+        window.toastTimer
+    );
+
+
+    window.toastTimer =
+        setTimeout(() => {
+
+            toast.classList.remove(
+                "show"
+            );
+
+        }, 2800);
+
+}
+
+
+
+/* =========================================================
+   SIDE MENU PANELS
+========================================================= */
+
+function showPanel(type) {
+
+    closeMenu();
+
+
+    const panels = {
+
+        language: [
+            "अ",
+            "NATIVE LANGUAGE",
+            "Travel in your language",
+            "Choose the language you want to use while exploring.",
+            "हिन्दी",
+            "English",
+            "বাংলা",
+            "தமிழ்"
+        ],
+
+
+        map: [
+            "⌖",
+            "INTELLIGENT MAP",
+            "Navigate with context",
+            "Use Route on any place to open its location.",
+            "Open a route"
+        ],
+
+
+        sos: [
+            "SOS",
+            "SOS",
+            "Emergency help",
+            "Keep emergency support close while you explore Delhi.",
+            "Emergency support",
+            "Share my location"
+        ],
+
+
+        profile: [
+            "♙",
+            "PROFILE",
+            "{{ user_name|escapejs }}",
+            "Your profile and travel preferences.",
+            "Saved destinations",
+            "Recent searches"
+        ],
+
+
+        history: [
+            "▣",
+            "TRIP HISTORY",
+            "Your trip history",
+            "Places you explore during this session.",
+            "Saved places"
+        ]
+
+    }[type];
+
+
+    if (!panels) {
+        return;
+    }
+
+
+    $("#toolIcon").textContent =
+        panels[0];
+
+
+    $("#toolLabel").textContent =
+        panels[1];
+
+
+    $("#toolTitle").textContent =
+        panels[2];
+
+
+    $("#toolText").textContent =
+        panels[3];
+
+
+    $("#toolOptions").innerHTML =
+        panels
+            .slice(4)
+            .map(
+                (item) => `
+                    <button
+                        type="button"
+                        onclick="showToast('${item.replace(/'/g, "\\'")}')">
+
+                        ${item}
+
+                        <span>›</span>
+
+                    </button>
+                `
+            )
+            .join("");
+
+
+    $("#toolModal").classList.add(
+        "show"
+    );
+
+
+    $("#toolModal").setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+}
+
+
+function closePanel() {
+
+    $("#toolModal").classList.remove(
+        "show"
+    );
+
+
+    $("#toolModal").setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+}
+
+
+
+/* =========================================================
+   GALLERY
+========================================================= */
+
+function slides() {
+
+    return [
+        ...document.querySelectorAll(
+            "#gallery .slide"
+        )
+    ];
+
+}
+
+
+function slide(direction) {
+
+    const all = slides();
+
+
+    if (!all.length) {
+        return;
+    }
+
+
+    all[currentSlide]
+        ?.classList.remove("active");
+
+
+    currentSlide =
+        (
+            currentSlide +
+            direction +
+            all.length
+        ) % all.length;
+
+
+    all[currentSlide]
+        ?.classList.add("active");
+
+
+    const number =
+        $("#slideNumber");
+
+
+    if (number) {
+
+        number.textContent =
+            currentSlide + 1;
+
+    }
+
+}
+
+
+
+/* =========================================================
+   HISTORY
+========================================================= */
+
+function toggleHistory() {
+
+    const history =
+        $("#history");
+
+
+    if (history) {
+
+        history.classList.toggle(
+            "show"
+        );
+
+    }
+
+}
+
+
+function openHistory(
+    event,
+    name,
+    history
+) {
+
+    event?.stopPropagation();
+
+
+    showPanel("history");
+
+
+    $("#toolTitle").textContent =
+        name;
+
+
+    $("#toolText").textContent =
+        history ||
+        "Historical information is currently unavailable.";
+
+}
+
+
+
+/* =========================================================
+   ROUTE
+========================================================= */
+
+function route() {
+
+    routeTo(
+        null,
+        placeData?.latitude,
+        placeData?.longitude
+    );
+
+}
+
+
+function routeTo(
+    event,
+    latitude,
+    longitude
+) {
+
+    event?.stopPropagation();
+
+
+    if (
+        latitude === undefined ||
+        latitude === null ||
+        longitude === undefined ||
+        longitude === null ||
+        latitude === "" ||
+        longitude === ""
+    ) {
+
+        showToast(
+            "Route coordinates are not available."
+        );
+
+        return;
+
+    }
+
+
+    const url =
+        `/map/?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`;
+
+
+    window.open(
+        url,
+        "_blank",
+        "noopener"
+    );
+
+}
+
+
+
+/* =========================================================
+   WEATHER
+========================================================= */
+
+function weatherCondition(
+    code,
+    raining
+) {
+
+    if (raining) {
+        return "Raining now";
+    }
+
+
+    const n = Number(code);
+
+
+    if (n === 0) {
+        return "Clear skies";
+    }
+
+
+    if ([1, 2, 3].includes(n)) {
+
+        return n === 3
+            ? "Overcast"
+            : "Partly cloudy";
+
+    }
+
+
+    if ([45, 48].includes(n)) {
+        return "Foggy";
+    }
+
+
+    if (
+        [51,53,55,56,57]
+            .includes(n)
+    ) {
+
+        return "Drizzle nearby";
+
+    }
+
+
+    if (
+        [61,63,65,66,67,80,81,82]
+            .includes(n)
+    ) {
+
+        return "Rain showers";
+
+    }
+
+
+    if (
+        [71,73,75,77,85,86]
+            .includes(n)
+    ) {
+
+        return "Snow";
+
+    }
+
+
+    if (
+        [95,96,99]
+            .includes(n)
+    ) {
+
+        return "Thunderstorm";
+
+    }
+
+
+    return "Weather update";
+
+}
+
+
+
+function heatCondition(
+    feelsLike
+) {
+
+    const value =
+        Number(feelsLike);
+
+
+    if (!Number.isFinite(value)) {
+        return "Heat unavailable";
+    }
+
+
+    if (value >= 38) {
+        return "Very hot";
+    }
+
+
+    if (value >= 32) {
+        return "Hot";
+    }
+
+
+    if (value >= 26) {
+        return "Warm";
+    }
+
+
+    if (value >= 18) {
+        return "Comfortable";
+    }
+
+
+    if (value >= 10) {
+        return "Cool";
+    }
+
+
+    return "Cold";
+
+}
+
+
+
+function weatherNumber(
+    value,
+    unit = ""
+) {
+
+    const number =
+        Number(value);
+
+
+    return Number.isFinite(number)
+        ? `${number.toFixed(1)}${unit}`
+        : "—";
+
+}
+
+
+
+/* =========================================================
+   WEATHER REQUEST
+========================================================= */
+
+function renderWeather(place) {
+
+    const title =
+        $("#weatherTitle");
+
+    const details =
+        $("#weatherDetails");
+
+    const stats =
+        $("#weatherStats");
+
+    const icon =
+        $("#weatherIcon");
+
+    const label =
+        $("#weatherLabel");
+
+
+    if (
+        !title ||
+        !details ||
+        !stats ||
+        !place
+    ) {
+
+        return;
+
+    }
+
+
+    const requestId =
+        ++weatherRequestId;
+
+
+    label.textContent =
+        "LIVE WEATHER";
+
+
+    title.textContent =
+        "Loading current weather…";
+
+
+    details.textContent =
+        `Checking temperature, rain, and heat for ${place.name}.`;
+
+
+    stats.innerHTML = "";
+
+
+    icon.textContent = "⌛";
+
+
+    if (
+        place.latitude === undefined ||
+        place.latitude === null ||
+        place.latitude === "" ||
+        place.longitude === undefined ||
+        place.longitude === null ||
+        place.longitude === ""
+    ) {
+
+        label.textContent =
+            "WEATHER GUIDE";
+
+
+        title.textContent =
+            "Live weather needs coordinates";
+
+
+        details.textContent =
+            place.best_time ||
+            "Check the best time before visiting.";
+
+
+        icon.textContent =
+            "☼";
+
+
+        return;
+
+    }
+
+
+    fetch(
+        `/api/weather/?latitude=${encodeURIComponent(place.latitude)}&longitude=${encodeURIComponent(place.longitude)}`
+    )
+
+    .then((response) => {
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Weather request failed"
+            );
+
+        }
+
+        return response.json();
+
+    })
+
+
+    .then((data) => {
+
+        if (
+            requestId !== weatherRequestId
+        ) {
+
+            return;
+
+        }
+
+
+        const rainAmount =
+            Number(data.rain) || 0;
+
+
+        const precipitation =
+            Number(data.precipitation) || 0;
+
+
+        const raining =
+            rainAmount > 0 ||
+            precipitation > 0 ||
+            [
+                51,53,55,56,57,
+                61,63,65,66,67,
+                80,81,82,
+                95,96,99
+            ].includes(
+                Number(data.weather_code)
+            );
+
+
+        const condition =
+            weatherCondition(
+                data.weather_code,
+                raining
+            );
+
+
+        const heat =
+            heatCondition(
+                data.feels_like
+            );
+
+
+        label.textContent =
+            `LIVE WEATHER · ${data.timezone || "LOCAL TIME"}`;
+
+
+        title.textContent =
+            `${condition} · ${heat}`;
+
+
+        details.textContent =
+            `Updated ${data.time || "just now"} · ${
+                raining
+                    ? "Carry rain protection."
+                    : "No rain right now."
+            }`;
+
+
+        icon.textContent =
+            raining
+                ? "☂"
+                : (
+                    Number(data.weather_code) >= 1 &&
+                    Number(data.weather_code) <= 3
+                        ? "☁"
+                        : "☼"
+                );
+
+
+        stats.innerHTML = "";
+
+
+        const weatherItems = [
+
+            [
+                "Temperature",
+                weatherNumber(
+                    data.temperature,
+                    data.temperature_unit
+                )
+            ],
+
+            [
+                "Feels like",
+                weatherNumber(
+                    data.feels_like,
+                    data.temperature_unit
+                )
+            ],
+
+            [
+                "Rain",
+                `${weatherNumber(
+                    data.rain,
+                    " mm"
+                )}`
+            ],
+
+            [
+                "Humidity",
+                weatherNumber(
+                    data.humidity,
+                    "%"
+                )
+            ]
+
+        ];
+
+
+        weatherItems.forEach(
+            ([name, value]) => {
+
+                const item =
+                    document.createElement(
+                        "span"
+                    );
+
+
+                const small =
+                    document.createElement(
+                        "small"
+                    );
+
+                small.textContent =
+                    name;
+
+
+                const bold =
+                    document.createElement(
+                        "b"
+                    );
+
+                bold.textContent =
+                    value;
+
+
+                item.append(
+                    small,
+                    bold
+                );
+
+
+                stats.appendChild(item);
+
+            }
+        );
+
+    })
+
+
+    .catch((error) => {
+
+        console.error(
+            "Weather error:",
+            error
+        );
+
+
+        if (
+            requestId !== weatherRequestId
+        ) {
+
+            return;
+
+        }
+
+
+        label.textContent =
+            "WEATHER GUIDE";
+
+
+        title.textContent =
+            "Live weather is unavailable";
+
+
+        details.textContent =
+            `For now, plan around: ${
+                place.best_time ||
+                "the local forecast"
+            }.`;
+
+
+        icon.textContent =
+            "☼";
+
+    });
+
+}
+
+
+
+function showWeather() {
+
+    const weather =
+        $("#weather");
+
+
+    if (!weather) {
+        return;
+    }
+
+
+    weather.classList.add(
+        "show"
+    );
+
+
+    renderWeather(
+        placeData
+    );
+
+
+    weather.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest"
+    });
+
+}
+
+
+
+/* =========================================================
+   FALLBACK
+========================================================= */
+
+function fallbackElement(
+    place,
+    large = false
+) {
+
+    const fallback =
+        document.createElement(
+            "div"
+        );
+
+
+    fallback.className =
+        `image-fallback${
+            large
+                ? " large show"
+                : ""
+        }`;
+
+
+    const mark =
+        document.createElement(
+            "span"
+        );
+
+
+    mark.textContent =
+        "✦";
+
+
+    const name =
+        document.createElement(
+            "b"
+        );
+
+
+    name.textContent =
+        place.name || "Place";
+
+
+    const location =
+        document.createElement(
+            "small"
+        );
+
+
+    location.textContent =
+        place.location || "Delhi";
+
+
+    fallback.append(
+        mark,
+        name,
+        location
+    );
+
+
+    return fallback;
+
+}
+
+
+
+/* =========================================================
+   RENDER MAIN PLACE
+========================================================= */
+
+function renderMainPlace(place) {
+
+    if (!place) {
+        return;
+    }
+
+
+    placeData = place;
+
+    currentSlide = 0;
+
+
+    $("#mainCategory").textContent =
+        place.broad_category ||
+        place.category ||
+        "Place";
+
+
+    $("#mainRating").textContent =
+        `★ ${place.rating || "—"}`;
+
+
+    $("#mainName").textContent =
+        place.name || "Unknown place";
+
+
+    $("#mainDescription").textContent =
+        place.description ||
+        "A memorable place to add to your Delhi journey.";
+
+
+    $("#mainLocation").textContent =
+        place.location ||
+        "Delhi";
+
+
+    $("#mainBestTime").textContent =
+        place.best_time ||
+        "Year round";
+
+
+    $("#historyText").textContent =
+        place.history ||
+        "Historical information is currently unavailable.";
+
+
+    $("#matchQuery").textContent =
+        `Selected: ${place.name}`;
+
+
+    const gallery =
+        $("#gallery");
+
+
+    if (!gallery) {
+        return;
+    }
+
+
+    gallery.innerHTML = "";
+
+
+    const images =
+        Array.isArray(place.images)
+            ? place.images.filter(Boolean)
+            : [];
+
+
+    console.log(
+        "Selected place:",
+        place.name
+    );
+
+
+    console.log(
+        "Images from dataset:",
+        images
+    );
+
+
+    /* =====================
+       NO IMAGE
+    ====================== */
+
+    if (!images.length) {
+
+        const only =
+            document.createElement(
+                "div"
+            );
+
+
+        only.className =
+            "slide active";
+
+
+        only.appendChild(
+            fallbackElement(
+                place,
+                true
+            )
+        );
+
+
+        gallery.appendChild(
+            only
+        );
+
+    }
+
+
+    /* =====================
+       DATASET IMAGES
+    ====================== */
+
+    else {
+
+        images.forEach(
+            (imagePath, index) => {
+
+                const current =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                current.className =
+                    `slide${
+                        index === 0
+                            ? " active"
+                            : ""
+                    }`;
+
+
+                const image =
+                    document.createElement(
+                        "img"
+                    );
+
+
+                /*
+                    THIS IS THE FIX
+                */
+
+                const finalUrl =
+                    getImageUrl(
+                        imagePath
+                    );
+
+
+                console.log(
+                    `Image ${index + 1}:`,
+                    finalUrl
+                );
+
+
+                image.src =
+                    finalUrl;
+
+
+                image.alt =
+                    place.name;
+
+
+                image.loading =
+                    "lazy";
+
+
+                const fallback =
+                    fallbackElement(
+                        place,
+                        true
+                    );
+
+
+                /*
+                    Initially hide fallback.
+                */
+
+                fallback.classList.remove(
+                    "show"
+                );
+
+
+                image.onerror =
+                    function () {
+
+                        console.error(
+                            "Main image failed:",
+                            finalUrl
+                        );
+
+
+                        image.style.display =
+                            "none";
+
+
+                        fallback.classList.add(
+                            "show"
+                        );
+
+                    };
+
+
+                image.onload =
+                    function () {
+
+                        image.style.display =
+                            "block";
+
+
+                        fallback.classList.remove(
+                            "show"
+                        );
+
+                    };
+
+
+                current.append(
+                    image,
+                    fallback
+                );
+
+
+                gallery.appendChild(
+                    current
+                );
+
+            }
+        );
+
+    }
+
+
+    $("#slideNumber").textContent =
+        "1";
+
+
+    $("#slideTotal").textContent =
+        Math.max(
+            images.length,
+            1
+        );
+
+
+    renderWeather(
+        place
+    );
+
+}
+
+
+
+/* =========================================================
+   CREATE RECOMMENDATION CARD
+========================================================= */
+
+function createRecommendationCard(
+    place
+) {
+
+    const card =
+        document.createElement(
+            "article"
+        );
+
+
+    card.className =
+        "card selectable-card";
+
+
+    card.addEventListener(
+        "click",
+        (event) => {
+
+            selectPlace(
+                event,
+                place.name
+            );
+
+        }
+    );
+
+
+    /* =====================
+       IMAGE
+    ====================== */
+
+    const imageBox =
+        document.createElement(
+            "div"
+        );
+
+
+    imageBox.className =
+        "card-image";
+
+
+    const images =
+        Array.isArray(place.images)
+            ? place.images.filter(Boolean)
+            : [];
+
+
+    const imagePath =
+        images.length
+            ? images[0]
+            : "";
+
+
+    const fallback =
+        fallbackElement(
+            place
+        );
+
+
+    fallback.classList.remove(
+        "show"
+    );
+
+
+    if (imagePath) {
+
+        const image =
+            document.createElement(
+                "img"
+            );
+
+
+        /*
+            IMPORTANT FIX
+
+            Do NOT use:
+
+            image.src = imagePath;
+
+            Use getImageUrl().
+        */
+
+        const finalUrl =
+            getImageUrl(
+                imagePath
+            );
+
+
+        console.log(
+            "Recommendation:",
+            place.name,
+            finalUrl
+        );
+
+
+        image.src =
+            finalUrl;
+
+
+        image.alt =
+            place.name;
+
+
+        image.loading =
+            "lazy";
+
+
+        image.onerror =
+            function () {
+
+                console.error(
+                    "Recommendation image failed:",
+                    finalUrl
+                );
+
+
+                image.style.display =
+                    "none";
+
+
+                fallback.classList.add(
+                    "show"
+                );
+
+            };
+
+
+        image.onload =
+            function () {
+
+                image.style.display =
+                    "block";
+
+
+                fallback.classList.remove(
+                    "show"
+                );
+
+            };
+
+
+        imageBox.append(
+            image,
+            fallback
+        );
+
+    }
+
+    else {
+
+        fallback.classList.add(
+            "show"
+        );
+
+
+        imageBox.appendChild(
+            fallback
+        );
+
+    }
+
+
+    /* Rating */
+
+    const rating =
+        document.createElement(
+            "span"
+        );
+
+
+    rating.className =
+        "card-rating";
+
+
+    rating.textContent =
+        `★ ${place.rating || "—"}`;
+
+
+    imageBox.appendChild(
+        rating
+    );
+
+
+    /* =====================
+       CARD BODY
+    ====================== */
+
+    const body =
+        document.createElement(
+            "div"
+        );
+
+
+    body.className =
+        "card-body";
+
+
+    const name =
+        document.createElement(
+            "h3"
+        );
+
+
+    name.textContent =
+        place.name;
+
+
+    const category =
+        document.createElement(
+            "p"
+        );
+
+
+    category.textContent =
+        place.category ||
+        place.broad_category ||
+        "Place";
+
+
+    const location =
+        document.createElement(
+            "small"
+        );
+
+
+    location.textContent =
+        `⌖ ${place.location || "Delhi"}`;
+
+
+    /* Buttons */
+
+    const actions =
+        document.createElement(
+            "div"
+        );
+
+
+    actions.className =
+        "card-actions";
+
+
+    const history =
+        document.createElement(
+            "button"
+        );
+
+
+    history.type =
+        "button";
+
+
+    history.textContent =
+        "History";
+
+
+    history.addEventListener(
+        "click",
+        (event) => {
+
+            openHistory(
+                event,
+                place.name,
+                place.history
+            );
+
+        }
+    );
+
+
+    const routeButton =
+        document.createElement(
+            "button"
+        );
+
+
+    routeButton.type =
+        "button";
+
+
+    routeButton.textContent =
+        "⌖ Route";
+
+
+    routeButton.addEventListener(
+        "click",
+        (event) => {
+
+            routeTo(
+                event,
+                place.latitude,
+                place.longitude
+            );
+
+        }
+    );
+
+
+    actions.append(
+        history,
+        routeButton
+    );
+
+
+    body.append(
+        name,
+        category,
+        location,
+        actions
+    );
+
+
+    card.append(
+        imageBox,
+        body
+    );
+
+
+    return card;
+
+}
+
+
+
+/* =========================================================
+   RENDER RECOMMENDATIONS
+========================================================= */
+
+function renderRecommendations(
+    recommendations
+) {
+
+    const cards =
+        $("#recommendationCards");
+
+
+    if (!cards) {
+        return;
+    }
+
+
+    cards.innerHTML = "";
+
+
+    if (
+        Array.isArray(recommendations) &&
+        recommendations.length
+    ) {
+
+        recommendations.forEach(
+            (place) => {
+
+                cards.appendChild(
+                    createRecommendationCard(
+                        place
+                    )
+                );
+
+            }
+        );
+
+    }
+
+    else {
+
+        const empty =
+            document.createElement(
+                "p"
+            );
+
+
+        empty.className =
+            "no-recommendations";
+
+
+        empty.textContent =
+            "No more places found from the 81-place dataset.";
+
+
+        cards.appendChild(
+            empty
+        );
+
+    }
+
+
+    $("#recommendationLabel").textContent =
+        "RECOMMENDED FROM YOUR DATASET";
+
+
+    $("#recommendationHeading").textContent =
+        placeData?.name
+            ? `More places like ${placeData.name}`
+            : "Recommended places";
+
+}
+
+
+
+/* =========================================================
+   CLICK RECOMMENDATION
+========================================================= */
+
+function selectPlace(
+    event,
+    name
+) {
+
+    event?.stopPropagation();
+
+
+    if (!name) {
+        return;
+    }
+
+
+    console.log(
+        "Selected recommendation:",
+        name
+    );
+
+
+    showToast(
+        `Loading ${name}…`
+    );
+
+
+    fetch(
+        `/api/place/?name=${encodeURIComponent(name)}`
+    )
+
+    .then((response) => {
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Place request failed: ${response.status}`
+            );
+
+        }
+
+
+        return response.json();
+
+    })
+
+
+    .then((payload) => {
+
+        console.log(
+            "API place response:",
+            payload
+        );
+
+
+        if (
+            !payload ||
+            !payload.place
+        ) {
+
+            throw new Error(
+                "Place data missing"
+            );
+
+        }
+
+
+        /*
+            This updates:
+
+            - Main image
+            - 5 image gallery
+            - Name
+            - Description
+            - History
+            - Location
+            - Weather
+            - Route
+        */
+
+        renderMainPlace(
+            payload.place
+        );
+
+
+        renderRecommendations(
+            payload.recommendations || []
+        );
+
+
+        showToast(
+            `${payload.place.name} loaded successfully.`
+        );
+
+
+        $("#result")
+            ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+    })
+
+
+    .catch((error) => {
+
+        console.error(
+            "Place loading error:",
+            error
+        );
+
+
+        showToast(
+            "That place could not be loaded right now."
+        );
+
+    });
+
+}
+
+
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+function toggleChat() {
+
+    const widget =
+        $("#chatWidget");
+
+
+    if (!widget) {
+        return;
+    }
+
+
+    const open =
+        !widget.classList.contains(
+            "show"
+        );
+
+
+    widget.classList.toggle(
+        "show",
+        open
+    );
+
+
+    widget.setAttribute(
+        "aria-hidden",
+        String(!open)
+    );
+
+
+    if (open) {
+
+        $("#chatInput")
+            ?.focus();
+
+    }
+
+}
+
+
+
+function appendChatMessage(
+    text,
+    role = "bot"
+) {
+
+    const messages =
+        $("#chatMessages");
+
+
+    if (!messages) {
+        return;
+    }
+
+
+    const item =
+        document.createElement(
+            "div"
+        );
+
+
+    item.className =
+        `chat-message ${role}`;
+
+
+    item.textContent =
+        text;
+
+
+    messages.appendChild(
+        item
+    );
+
+
+    messages.scrollTop =
+        messages.scrollHeight;
+
+}
+
+
+
+function askChat(message) {
+
+    const input =
+        $("#chatInput");
+
+
+    if (!input) {
+        return;
+    }
+
+
+    input.value =
+        message;
+
+
+    sendChat(
+        new Event("submit")
+    );
+
+}
+
+
+
+function sendChat(event) {
+
+    event.preventDefault();
+
+
+    const input =
+        $("#chatInput");
+
+
+    if (!input) {
+        return;
+    }
+
+
+    const message =
+        input.value.trim();
+
+
+    if (!message) {
+        return;
+    }
+
+
+    appendChatMessage(
+        message,
+        "user"
+    );
+
+
+    input.value = "";
+
+
+    const lower =
+        message.toLowerCase();
+
+
+    let reply =
+        placeData?.name
+            ? `${placeData.name} is a great addition to your Delhi trip.`
+            : "Choose a place from GoPlane first.";
+
+
+    if (
+        lower.includes("weather") ||
+        lower.includes("rain") ||
+        lower.includes("temperature") ||
+        lower.includes("heat")
+    ) {
+
+        showWeather();
+
+
+        reply =
+            `I opened the live weather for ${
+                placeData?.name || "this place"
+            }.`;
+
+    }
+
+
+    else if (
+        lower.includes("best time") ||
+        lower.includes("visit") ||
+        lower.includes("when")
+    ) {
+
+        reply =
+            `The dataset suggests visiting ${
+                placeData?.name || "this place"
+            } during ${
+                placeData?.best_time ||
+                "the best local season"
+            }.`;
+
+    }
+
+
+    else if (
+        lower.includes("history") ||
+        lower.includes("tell me") ||
+        lower.includes("about")
+    ) {
+
+        reply =
+            placeData?.history ||
+            placeData?.description ||
+            "Historical information is currently unavailable.";
+
+    }
+
+
+    else if (
+        lower.includes("route") ||
+        lower.includes("map") ||
+        lower.includes("direction")
+    ) {
+
+        reply =
+            `Use the Route button to navigate to ${
+                placeData?.name || "this place"
+            }.`;
+
+    }
+
+
+    setTimeout(
+        () => appendChatMessage(
+            reply
+        ),
+        240
+    );
+
+}
+
+
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    (event) => {
+
+        if (event.key === "Escape") {
+
+            closeMenu();
+
+            closePanel();
+
+        }
+
+
+        if (event.key === "ArrowLeft") {
+
+            slide(-1);
+
+        }
+
+
+        if (event.key === "ArrowRight") {
+
+            slide(1);
+
+        }
+
+    }
+);
+
+
+
+/* =========================================================
+   SWIPE GALLERY
+========================================================= */
+
+function setupGallerySwipe() {
+
+    const mainImage =
+        document.querySelector(
+            ".main-image"
+        );
+
+
+    if (!mainImage) {
+        return;
+    }
+
+
+    mainImage.addEventListener(
+        "touchstart",
+        (event) => {
+
+            touchStart =
+                event.changedTouches[0]
+                    .screenX;
+
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    mainImage.addEventListener(
+        "touchend",
+        (event) => {
+
+            const distance =
+                event.changedTouches[0]
+                    .screenX -
+                touchStart;
+
+
+            if (
+                Math.abs(distance) > 35
+            ) {
+
+                slide(
+                    distance > 0
+                        ? -1
+                        : 1
+                );
+
+            }
+
+        },
+        {
+            passive: true
+        }
+    );
+
+}
+
+
+
+/* =========================================================
+   INITIALIZATION
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        /*
+            Convert all initial dataset
+            image paths into Django
+            static URLs.
+        */
+
+        fixDatasetImages();
+
+
+        /*
+            Setup swipe.
+        */
+
+        setupGallerySwipe();
+
+
+        /*
+            Load initial weather.
+        */
+
+        if (
+            placeData &&
+            placeData.name
+        ) {
+
+            renderWeather(
+                placeData
+            );
+
+        }
+
+    }
+);
+
+</script>
+
+
+</body>
+</html>
