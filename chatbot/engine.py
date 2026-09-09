@@ -89,10 +89,6 @@ TEXT_COLUMNS = [
 for column in TEXT_COLUMNS:
 
     if column in df.columns:
-<<<<<<< HEAD
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         df[column] = (
             df[column]
             .fillna("")
@@ -102,11 +98,11 @@ for column in TEXT_COLUMNS:
 
 
 # =========================================================
-<<<<<<< HEAD
+
 # SAFE VALUE
-=======
+
 # HELPER
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
+
 # =========================================================
 
 def clean_value(value):

@@ -92,10 +92,10 @@ body {
     display: grid;
 
     grid-template-columns:
-<<<<<<< HEAD
+
         250px
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
+
+
         minmax(0, 1fr)
         340px;
 
@@ -103,13 +103,12 @@ body {
 
 }
 
-<<<<<<< HEAD
-=======
+
 .chat-main{margin-left:246px}
 .chat-back-link{color:var(--text-secondary);font-size:12px;font-weight:700;text-decoration:none;margin-left:12px}
 @media(max-width:900px){.chat-main{margin-left:0}.chat-back-link{display:inline-block}}
 
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
+
 
 /* =========================================================
    LEFT SIDEBAR
@@ -436,7 +435,7 @@ body {
     border-bottom:
         1px solid var(--border);
 
-    backdrop-filter:
+     backdrop-filter:
         blur(10px);
 
 }
