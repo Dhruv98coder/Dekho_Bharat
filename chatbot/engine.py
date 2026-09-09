@@ -1,10 +1,7 @@
 import os
 import re
-<<<<<<< HEAD
 from urllib.parse import quote
 
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 import pandas as pd
 
 from .intent import detect_intent
@@ -15,30 +12,14 @@ from .intent import detect_intent
 # =========================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-<<<<<<< HEAD
-
-DATASET_PATH = os.path.join(
-    BASE_DIR,
-=======
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 
 DATASET_PATH = os.path.join(
     PROJECT_DIR,
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     "dataset",
     "GoPlan_Delhi_Places_AI_Dataset_READABLE(final).csv"
 )
 
-<<<<<<< HEAD
-LOCAL_IMAGES_PATH = os.path.join(
-    BASE_DIR,
-    "static",
-    "chatbot",
-    "places"
-)
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
 # =========================================================
 # LOAD DATASET
@@ -133,16 +114,8 @@ def clean_value(value):
     if value is None:
         return ""
 
-<<<<<<< HEAD
-    try:
-        if pd.isna(value):
-            return ""
-    except Exception:
-        pass
-=======
     if pd.isna(value):
         return ""
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     return str(value).strip()
 
@@ -182,14 +155,7 @@ def find_place(question):
 
         place_clean = original_name.lower()
 
-<<<<<<< HEAD
-        # -------------------------------------------------
-        # FULL NAME
-        # -------------------------------------------------
-
-=======
         # Full name
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         place_normalized = re.sub(
             r"[^a-z0-9\s]",
             " ",
@@ -212,14 +178,7 @@ def find_place(question):
             if not result.empty:
                 return result.iloc[0]
 
-<<<<<<< HEAD
-        # -------------------------------------------------
-        # SHORT NAME BEFORE BRACKETS
-        # -------------------------------------------------
-
-=======
         # Short name before brackets
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         short_name = place_clean.split("(")[0].strip()
 
         if len(short_name) >= 4:
@@ -243,170 +202,6 @@ def find_place(question):
 
 
 # =========================================================
-<<<<<<< HEAD
-# FIND LOCAL IMAGE DIRECTORY
-# =========================================================
-
-def get_local_image_directory(place_id):
-
-    place_id = clean_value(place_id)
-
-    if not place_id:
-        return None
-
-    # -----------------------------------------------------
-    # EXAMPLE:
-    #
-    # DEL-001 -> 0
-    # DEL-002 -> 1
-    # DEL-003 -> 2
-    #
-    # If your folders are named directly as place_id,
-    # that is also supported.
-    # -----------------------------------------------------
-
-    # First try exact place_id folder.
-    exact_dir = os.path.join(
-        LOCAL_IMAGES_PATH,
-        place_id
-    )
-
-    if os.path.isdir(exact_dir):
-        return exact_dir
-
-    # -----------------------------------------------------
-    # Extract numeric part from place_id
-    # -----------------------------------------------------
-
-    match = re.search(
-        r"(\d+)$",
-        place_id
-    )
-
-    if not match:
-        return None
-
-    place_number = int(
-        match.group(1)
-    )
-
-    # DEL-001 -> folder 0
-    numeric_folder = str(
-        place_number - 1
-    )
-
-    numeric_dir = os.path.join(
-        LOCAL_IMAGES_PATH,
-        numeric_folder
-    )
-
-    if os.path.isdir(numeric_dir):
-        return numeric_dir
-
-    # -----------------------------------------------------
-    # Fallback: try same number
-    # Example DEL-001 -> 1
-    # -----------------------------------------------------
-
-    same_number_dir = os.path.join(
-        LOCAL_IMAGES_PATH,
-        str(place_number)
-    )
-
-    if os.path.isdir(same_number_dir):
-        return same_number_dir
-
-    return None
-
-
-# =========================================================
-# NATURAL SORT
-# =========================================================
-
-def natural_key(filename):
-
-    matches = re.findall(
-        r"\d+",
-        filename
-    )
-
-    if matches:
-
-        return (
-            int(matches[0]),
-            filename.lower()
-        )
-
-    return (
-        999,
-        filename.lower()
-    )
-
-
-# =========================================================
-# LOAD LOCAL IMAGES
-# =========================================================
-
-def get_local_images(place_id):
-
-    images = []
-
-    image_dir = get_local_image_directory(
-        place_id
-    )
-
-    if image_dir is None:
-        return images
-
-    try:
-
-        filenames = sorted(
-            os.listdir(image_dir),
-            key=natural_key
-        )
-
-    except OSError:
-        return images
-
-    allowed_extensions = (
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp",
-        ".avif"
-    )
-
-    for filename in filenames:
-
-        if not filename.lower().endswith(
-            allowed_extensions
-        ):
-            continue
-
-        file_path = os.path.join(
-            image_dir,
-            filename
-        )
-
-        if not os.path.isfile(file_path):
-            continue
-
-        folder_name = os.path.basename(
-            image_dir
-        )
-
-        images.append(
-            "/static/chatbot/places/"
-            f"{quote(folder_name)}/"
-            f"{quote(filename)}"
-        )
-
-    return images
-
-
-# =========================================================
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 # PLACE → JSON FRIENDLY DATA
 # =========================================================
 
@@ -415,23 +210,6 @@ def place_to_dict(place):
     if place is None:
         return None
 
-<<<<<<< HEAD
-    # =====================================================
-    # LOCAL IMAGES
-    # =====================================================
-
-    place_id = clean_value(
-        place.get("place_id", "")
-    )
-
-    images = get_local_images(
-        place_id
-    )
-
-    # =====================================================
-    # COORDINATES
-    # =====================================================
-=======
     images = []
 
     for i in range(1, 6):
@@ -446,7 +224,6 @@ def place_to_dict(place):
 
             if image:
                 images.append(image)
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     latitude = clean_value(
         place.get("latitude", "")
@@ -456,42 +233,19 @@ def place_to_dict(place):
         place.get("longitude", "")
     )
 
-<<<<<<< HEAD
-    # =====================================================
-    # GOOGLE MAPS URL
-    # =====================================================
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     route_url = clean_value(
         place.get("route_google_maps_url", "")
     )
 
     # If dataset route URL is missing,
     # create a Google Maps destination URL.
-<<<<<<< HEAD
-
-    if (
-        not route_url
-        and latitude
-        and longitude
-    ):
-=======
     if not route_url and latitude and longitude:
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
         route_url = (
             "https://www.google.com/maps/dir/?api=1"
             f"&destination={latitude},{longitude}"
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # RETURN DATA
-    # =====================================================
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     return {
 
         "place_id": clean_value(
@@ -576,10 +330,6 @@ def place_to_dict(place):
 
         "google_maps_url": route_url,
 
-<<<<<<< HEAD
-        # LOCAL IMAGES
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         "images": images
     }
 
@@ -597,21 +347,10 @@ def get_answer(place, intent):
             "Please mention the place name."
         )
 
-<<<<<<< HEAD
-    name = clean_value(
-        place["place_name"]
-    )
-
-    # =====================================================
-    # ABOUT
-    # =====================================================
-
-=======
     name = clean_value(place["place_name"])
 
 
     # ABOUT
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     if intent == "ABOUT_PLACE":
 
         return (
@@ -619,41 +358,6 @@ def get_answer(place, intent):
             f"{clean_value(place.get('description', ''))}"
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # HISTORY
-    # =====================================================
-
-    elif intent == "HISTORY":
-
-        history = clean_value(
-            place.get(
-                "history_30_lines",
-                ""
-            )
-        )
-
-        if not history:
-
-            history = clean_value(
-                place.get(
-                    "history_full",
-                    ""
-                )
-            )
-
-        if not history:
-
-            history = clean_value(
-                place.get(
-                    "history",
-                    ""
-                )
-            )
-
-        if not history:
-
-=======
 
     # HISTORY
     elif intent == "HISTORY":
@@ -673,7 +377,6 @@ def get_answer(place, intent):
             )
 
         if not history:
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             return (
                 f"### History of {name}\n\n"
                 "Historical information is currently unavailable."
@@ -684,34 +387,6 @@ def get_answer(place, intent):
             f"{history}"
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # ENTRY FEE
-    # =====================================================
-
-    elif intent == "ENTRY_FEE":
-
-        indian = clean_value(
-            place.get(
-                "entry_fee_indian",
-                ""
-            )
-        )
-
-        foreigner = clean_value(
-            place.get(
-                "entry_fee_foreigner",
-                ""
-            )
-        )
-
-        answer = (
-            f"### Entry Fee — {name}\n\n"
-        )
-
-        if indian:
-
-=======
 
     # ENTRY FEE
     elif intent == "ENTRY_FEE":
@@ -727,16 +402,11 @@ def get_answer(place, intent):
         answer = f"### Entry Fee — {name}\n\n"
 
         if indian:
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             answer += (
                 f"🇮🇳 **Indian visitors:** {indian}\n"
             )
 
         if foreigner:
-<<<<<<< HEAD
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             answer += (
                 f"🌍 **Foreign visitors:** {foreigner}\n"
             )
@@ -749,34 +419,6 @@ def get_answer(place, intent):
 
         return answer
 
-<<<<<<< HEAD
-    # =====================================================
-    # BEST TIME
-    # =====================================================
-
-    elif intent == "BEST_TIME":
-
-        season = clean_value(
-            place.get(
-                "best_time_season",
-                ""
-            )
-        )
-
-        suggestion = clean_value(
-            place.get(
-                "best_time_suggestion",
-                ""
-            )
-        )
-
-        answer = (
-            f"### Best Time to Visit {name}\n\n"
-        )
-
-        if season:
-
-=======
 
     # BEST TIME
     elif intent == "BEST_TIME":
@@ -792,49 +434,17 @@ def get_answer(place, intent):
         answer = f"### Best Time to Visit {name}\n\n"
 
         if season:
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             answer += (
                 f"📅 **Recommended period:** {season}\n"
             )
 
         if suggestion:
-<<<<<<< HEAD
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
             answer += (
                 f"💡 **Tip:** {suggestion}"
             )
 
         return answer
 
-<<<<<<< HEAD
-    # =====================================================
-    # ROUTE
-    # =====================================================
-
-    elif intent == "ROUTE":
-
-        latitude = clean_value(
-            place.get(
-                "latitude",
-                ""
-            )
-        )
-
-        longitude = clean_value(
-            place.get(
-                "longitude",
-                ""
-            )
-        )
-
-        location = clean_value(
-            place.get(
-                "location",
-                ""
-            )
-=======
 
     # ROUTE
     elif intent == "ROUTE":
@@ -849,7 +459,6 @@ def get_answer(place, intent):
 
         location = clean_value(
             place.get("location", "")
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         )
 
         return (
@@ -860,26 +469,12 @@ def get_answer(place, intent):
             "Intelligent Route Agent."
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # AWARENESS
-    # =====================================================
-
-    elif intent == "AWARENESS":
-
-        tips = clean_value(
-            place.get(
-                "awareness_tips",
-                ""
-            )
-=======
 
     # AWARENESS
     elif intent == "AWARENESS":
 
         tips = clean_value(
             place.get("awareness_tips", "")
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         )
 
         return (
@@ -887,26 +482,12 @@ def get_answer(place, intent):
             f"{tips}"
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # DURATION
-    # =====================================================
-
-    elif intent == "DURATION":
-
-        duration = clean_value(
-            place.get(
-                "recommended_duration",
-                ""
-            )
-=======
 
     # DURATION
     elif intent == "DURATION":
 
         duration = clean_value(
             place.get("recommended_duration", "")
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
         )
 
         return (
@@ -915,15 +496,8 @@ def get_answer(place, intent):
             "for this destination."
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # NEARBY
-    # =====================================================
-
-=======
 
     # NEARBY
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     elif intent == "NEARBY":
 
         return (
@@ -932,15 +506,8 @@ def get_answer(place, intent):
             "using this place's coordinates."
         )
 
-<<<<<<< HEAD
-    # =====================================================
-    # UNKNOWN
-    # =====================================================
-
-=======
 
     # UNKNOWN
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     return (
         f"I know about **{name}**.\n\n"
         "You can ask me about its **history**, "
@@ -964,41 +531,6 @@ conversation_memory = {
 
 def chat(question):
 
-<<<<<<< HEAD
-    intent_result = detect_intent(
-        question
-    )
-
-    intent = intent_result["intent"]
-
-    place = find_place(
-        question
-    )
-
-    # -----------------------------------------------------
-    # USE PREVIOUS PLACE
-    # -----------------------------------------------------
-
-    if place is None:
-
-        place = conversation_memory[
-            "current_place"
-        ]
-
-    # -----------------------------------------------------
-    # REMEMBER PLACE
-    # -----------------------------------------------------
-
-    if place is not None:
-
-        conversation_memory[
-            "current_place"
-        ] = place
-
-    # -----------------------------------------------------
-    # ANSWER
-    # -----------------------------------------------------
-=======
     intent_result = detect_intent(question)
 
     intent = intent_result["intent"]
@@ -1012,24 +544,12 @@ def chat(question):
     # Remember place
     if place is not None:
         conversation_memory["current_place"] = place
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     answer = get_answer(
         place,
         intent
     )
 
-<<<<<<< HEAD
-    # -----------------------------------------------------
-    # PLACE DATA
-    # -----------------------------------------------------
-
-    place_data = place_to_dict(
-        place
-    )
-
-=======
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     return {
 
         "success": True,
@@ -1038,19 +558,9 @@ def chat(question):
 
         "intent": intent,
 
-<<<<<<< HEAD
-        "confidence": intent_result[
-            "confidence"
-        ],
-
-        "matched_words": intent_result[
-            "matched_words"
-        ],
-=======
         "confidence": intent_result["confidence"],
 
         "matched_words": intent_result["matched_words"],
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
         "place": (
             place["place_name"]
@@ -1060,20 +570,12 @@ def chat(question):
 
         "answer": answer,
 
-<<<<<<< HEAD
-        "place_data": place_data
-=======
         "place_data": place_to_dict(place)
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
     }
 
 
 # =========================================================
-<<<<<<< HEAD
-# ALL PLACES
-=======
 # ALL 81 PLACES
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 # =========================================================
 
 def get_all_places():
@@ -1082,22 +584,10 @@ def get_all_places():
 
     for _, row in df.iterrows():
 
-<<<<<<< HEAD
-        data = place_to_dict(
-            row
-        )
-
-        if data:
-
-            places.append(
-                data
-            )
-=======
         data = place_to_dict(row)
 
         if data:
             places.append(data)
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
 
     return places
 
@@ -1154,75 +644,6 @@ if __name__ == "__main__":
 
     for question in questions:
 
-<<<<<<< HEAD
-        print(
-            "\n" + "=" * 60
-        )
-
-        result = chat(
-            question
-        )
-
-        print(
-            "QUESTION:"
-        )
-
-        print(
-            result["question"]
-        )
-
-        print(
-            "\nPLACE:"
-        )
-
-        print(
-            result["place"]
-        )
-
-        print(
-            "\nINTENT:"
-        )
-
-        print(
-            result["intent"]
-        )
-
-        print(
-            "\nANSWER:"
-        )
-
-        print(
-            result["answer"]
-        )
-
-        print(
-            "\nIMAGES:"
-        )
-
-        if result["place_data"]:
-
-            print(
-                len(
-                    result[
-                        "place_data"
-                    ][
-                        "images"
-                    ]
-                )
-            )
-
-            print(
-                result[
-                    "place_data"
-                ][
-                    "images"
-                ]
-            )
-
-        else:
-
-            print(0)
-=======
         print("\n" + "=" * 60)
 
         result = chat(question)
@@ -1247,4 +668,3 @@ if __name__ == "__main__":
             if result["place_data"]
             else 0
         )
->>>>>>> b08fcca42ead610540644ffbce1a541008c4f39b
