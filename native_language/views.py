@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 import json
 import re
+import traceback
 
 from native_language.services.translation import (
     translate_hindi_to_english,
@@ -66,7 +67,7 @@ def home(request):
 
 
 # ============================================================
-# DETECT LANGUAGE
+# DETECT
 # ============================================================
 
 @csrf_exempt
@@ -107,9 +108,9 @@ def detect(request):
                 status=400,
             )
 
-        # ====================================================
-        # DIRECT HINDI SCRIPT
-        # ====================================================
+        # ----------------------------------------------------
+        # Hindi script
+        # ----------------------------------------------------
 
         if contains_devanagari(text):
 
@@ -122,9 +123,9 @@ def detect(request):
                 }
             )
 
-        # ====================================================
-        # ROMAN HINDI
-        # ====================================================
+        # ----------------------------------------------------
+        # Roman Hindi
+        # ----------------------------------------------------
 
         try:
 
@@ -160,13 +161,13 @@ def detect(request):
 
             print(
                 "[NativeLanguage] "
-                "Roman Hindi detection error:",
+                "Roman Hindi detector error:",
                 repr(error),
             )
 
-        # ====================================================
-        # EXISTING DETECTOR
-        # ====================================================
+        # ----------------------------------------------------
+        # Existing detector
+        # ----------------------------------------------------
 
         try:
 
@@ -194,9 +195,9 @@ def detect(request):
                 repr(error),
             )
 
-        # ====================================================
-        # ENGLISH FALLBACK
-        # ====================================================
+        # ----------------------------------------------------
+        # English fallback
+        # ----------------------------------------------------
 
         if looks_like_english(text):
 
@@ -208,10 +209,6 @@ def detect(request):
                     "confidence": 0.80,
                 }
             )
-
-        # ====================================================
-        # UNKNOWN
-        # ====================================================
 
         return JsonResponse(
             {
@@ -237,9 +234,11 @@ def detect(request):
 
         print(
             "[NativeLanguage] "
-            "Detection API error:",
+            "DETECT API ERROR:",
             repr(error),
         )
+
+        traceback.print_exc()
 
         return JsonResponse(
             {
@@ -271,6 +270,10 @@ def translate(request):
 
     try:
 
+        # ====================================================
+        # READ REQUEST
+        # ====================================================
+
         data = json.loads(
             request.body or b"{}"
         )
@@ -294,27 +297,24 @@ def translate(request):
             )
 
         print(
-            "\n=============================="
+            "\n========================================"
         )
 
         print(
-            "[NativeLanguage] INPUT:",
+            "[NativeLanguage] "
+            "TRANSLATION REQUEST:",
             text,
         )
 
         # ====================================================
-        # DEVANAGARI HINDI
-        # ====================================================
-        #
-        # Directly send to REAL ML translator.
-        #
+        # HINDI SCRIPT
         # ====================================================
 
         if contains_devanagari(text):
 
             print(
                 "[NativeLanguage] "
-                "Hindi detected from Devanagari."
+                "DIRECT HINDI DETECTED"
             )
 
             translated = (
@@ -325,12 +325,12 @@ def translate(request):
 
             print(
                 "[NativeLanguage] "
-                "FINAL TRANSLATION:",
+                "FINAL RESULT:",
                 translated,
             )
 
             print(
-                "==============================\n"
+                "========================================\n"
             )
 
             return JsonResponse(
@@ -367,51 +367,35 @@ def translate(request):
         # ROMAN HINDI
         # ====================================================
 
-        roman_result = {
-            "is_roman_hindi": False,
-            "confidence": 0.0,
-        }
-
         try:
 
-            detected_roman = (
-                detect_roman_hindi(
-                    text
-                )
+            roman_result = detect_roman_hindi(
+                text
             )
-
-            if isinstance(
-                detected_roman,
-                dict,
-            ):
-
-                roman_result = {
-                    "is_roman_hindi":
-                        bool(
-                            detected_roman.get(
-                                "is_roman_hindi",
-                                False,
-                            )
-                        ),
-
-                    "confidence":
-                        detected_roman.get(
-                            "confidence",
-                            0.0,
-                        ),
-                }
 
         except Exception as error:
 
             print(
                 "[NativeLanguage] "
-                "Roman Hindi detector error:",
+                "Roman Hindi detection failed:",
                 repr(error),
             )
 
-        if roman_result[
-            "is_roman_hindi"
-        ]:
+            roman_result = {
+                "is_roman_hindi": False,
+                "confidence": 0.0,
+            }
+
+        if (
+            isinstance(
+                roman_result,
+                dict,
+            )
+            and roman_result.get(
+                "is_roman_hindi",
+                False,
+            )
+        ):
 
             try:
 
@@ -425,13 +409,9 @@ def translate(request):
 
                 print(
                     "[NativeLanguage] "
-                    "Roman Hindi conversion error:",
+                    "Roman Hindi conversion failed:",
                     repr(error),
                 )
-
-                normalized_text = text
-
-            if not normalized_text:
 
                 normalized_text = text
 
@@ -439,16 +419,6 @@ def translate(request):
                 translate_hindi_to_english(
                     normalized_text
                 )
-            )
-
-            print(
-                "[NativeLanguage] "
-                "ROMAN HINDI OUTPUT:",
-                translated,
-            )
-
-            print(
-                "==============================\n"
             )
 
             return JsonResponse(
@@ -468,9 +438,10 @@ def translate(request):
                         True,
 
                     "confidence":
-                        roman_result[
-                            "confidence"
-                        ],
+                        roman_result.get(
+                            "confidence",
+                            0.80,
+                        ),
 
                     "normalized_text":
                         normalized_text,
@@ -509,7 +480,7 @@ def translate(request):
 
             print(
                 "[NativeLanguage] "
-                "Language detector error:",
+                "Language detection failed:",
                 repr(error),
             )
 
@@ -544,16 +515,6 @@ def translate(request):
                 translate_english_to_hindi(
                     text
                 )
-            )
-
-            print(
-                "[NativeLanguage] "
-                "ENGLISH -> HINDI:",
-                translated,
-            )
-
-            print(
-                "==============================\n"
             )
 
             return JsonResponse(
@@ -593,19 +554,6 @@ def translate(request):
         # UNKNOWN
         # ====================================================
 
-        if language_info is None:
-
-            language_info = {
-                "language":
-                    "Unknown",
-
-                "language_code":
-                    "unknown",
-
-                "confidence":
-                    0.0,
-            }
-
         return JsonResponse(
             {
                 "success": True,
@@ -614,24 +562,36 @@ def translate(request):
                     text,
 
                 "detected_language":
-                    language_info.get(
-                        "language",
-                        "Unknown",
+                    (
+                        language_info.get(
+                            "language",
+                            "Unknown",
+                        )
+                        if language_info
+                        else "Unknown"
                     ),
 
                 "language_code":
-                    language_info.get(
-                        "language_code",
-                        "unknown",
+                    (
+                        language_info.get(
+                            "language_code",
+                            "unknown",
+                        )
+                        if language_info
+                        else "unknown"
                     ),
 
                 "roman_hindi":
                     False,
 
                 "confidence":
-                    language_info.get(
-                        "confidence",
-                        0.0,
+                    (
+                        language_info.get(
+                            "confidence",
+                            0.0,
+                        )
+                        if language_info
+                        else 0.0
                     ),
 
                 "translation":
@@ -659,16 +619,36 @@ def translate(request):
     except Exception as error:
 
         print(
+            "========================================"
+        )
+
+        print(
             "[NativeLanguage] "
             "TRANSLATION API ERROR:",
             repr(error),
         )
 
+        traceback.print_exc()
+
+        print(
+            "========================================"
+        )
+
         return JsonResponse(
             {
                 "success": False,
+
                 "error":
                     str(error),
+
+                "error_type":
+                    type(error).__name__,
+
+                "translation":
+                    "",
+
+                "success":
+                    False,
             },
             status=500,
         )
