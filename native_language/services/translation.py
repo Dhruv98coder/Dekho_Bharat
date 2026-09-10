@@ -1,15 +1,17 @@
 """
 Native Language AI Translation Service
 
-Translation is performed through Hugging Face Inference API.
-
-Supported direction:
-    Hindi -> English
-    English -> Hindi
+Architecture:
+    Django / Render
+        ↓
+    Hugging Face Inference API
+        ↓
+    Hindi <-> English translation
 
 Important:
-    HF_TOKEN must remain on the Django/Render server.
-    Never put the token in JavaScript.
+    - HF_TOKEN must exist in Render Environment Variables.
+    - Token must NEVER be placed in frontend JavaScript.
+    - This file does NOT load Torch/Transformers locally.
 """
 
 import os
@@ -21,12 +23,17 @@ import requests
 # CONFIGURATION
 # ============================================================
 
-HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
+HF_TOKEN = os.getenv(
+    "HF_TOKEN",
+    ""
+).strip()
+
 
 HI_EN_MODEL = os.getenv(
     "NATIVE_HI_EN_MODEL",
     "Helsinki-NLP/opus-mt-hi-en",
 ).strip()
+
 
 EN_HI_MODEL = os.getenv(
     "NATIVE_EN_HI_MODEL",
@@ -35,7 +42,8 @@ EN_HI_MODEL = os.getenv(
 
 
 HF_API_BASE = (
-    "https://router.huggingface.co/hf-inference/models/"
+    "https://router.huggingface.co/"
+    "hf-inference/models/"
 )
 
 
@@ -44,65 +52,171 @@ HF_API_BASE = (
 # ============================================================
 
 HINDI_PLACE_NAMES = {
-    "दिल्ली": "Delhi",
-    "कुतुब मीनार": "Qutub Minar",
-    "कुतुबमीनार": "Qutub Minar",
-    "लाल किला": "Red Fort",
-    "लालकिला": "Red Fort",
-    "इंडिया गेट": "India Gate",
-    "इंडियागेट": "India Gate",
-    "हुमायूं का मकबरा": "Humayun's Tomb",
-    "कमल मंदिर": "Lotus Temple",
-    "जामा मस्जिद": "Jama Masjid",
-    "अक्षरधाम मंदिर": "Akshardham Temple",
-    "अक्षरधाम": "Akshardham Temple",
-    "जंतर मंतर": "Jantar Mantar",
-    "पुराना किला": "Purana Qila",
-    "लोधी गार्डन": "Lodhi Garden",
-    "राष्ट्रपति भवन": "Rashtrapati Bhavan",
-    "राजघाट": "Raj Ghat",
+
+    "दिल्ली":
+        "Delhi",
+
+    "कुतुब मीनार":
+        "Qutub Minar",
+
+    "कुतुबमीनार":
+        "Qutub Minar",
+
+    "कुतुब":
+        "Qutub",
+
+    "लाल किला":
+        "Red Fort",
+
+    "लालकिला":
+        "Red Fort",
+
+    "इंडिया गेट":
+        "India Gate",
+
+    "इंडियागेट":
+        "India Gate",
+
+    "हुमायूं का मकबरा":
+        "Humayun's Tomb",
+
+    "हुमायूँ का मकबरा":
+        "Humayun's Tomb",
+
+    "कमल मंदिर":
+        "Lotus Temple",
+
+    "जामा मस्जिद":
+        "Jama Masjid",
+
+    "अक्षरधाम मंदिर":
+        "Akshardham Temple",
+
+    "अक्षरधाम":
+        "Akshardham Temple",
+
+    "जंतर मंतर":
+        "Jantar Mantar",
+
+    "पुराना किला":
+        "Purana Qila",
+
+    "लोधी गार्डन":
+        "Lodhi Garden",
+
+    "राष्ट्रपति भवन":
+        "Rashtrapati Bhavan",
+
+    "राजघाट":
+        "Raj Ghat",
+
+    "ताज महल":
+        "Taj Mahal",
+
+    "आगरा":
+        "Agra",
+
+    "आगरा किला":
+        "Agra Fort",
+
+    "कनॉट प्लेस":
+        "Connaught Place",
 }
 
 
 # ============================================================
-# ENGLISH PLACE -> HINDI
+# ENGLISH PLACE NAMES -> HINDI
 #
-# Used specifically for mixed Hindi-English sentences.
+# Used when Hindi sentence contains English place names.
 #
 # Example:
-#     आज मैं Delhi जा रहा हूं
+#
+#     मैं आज Delhi जा रहा हूं
 #
 # becomes:
-#     आज मैं दिल्ली जा रहा हूं
 #
-# before sending the sentence to the Hindi model.
+#     मैं आज दिल्ली जा रहा हूं
 # ============================================================
 
 ENGLISH_TO_HINDI_PLACES = {
-    "Qutub Minar": "कुतुब मीनार",
-    "Qutb Minar": "कुतुब मीनार",
-    "Qutub": "कुतुब",
-    "Red Fort": "लाल किला",
-    "Lal Qila": "लाल किला",
-    "India Gate": "इंडिया गेट",
-    "Taj Mahal": "ताज महल",
-    "Agra Fort": "आगरा किला",
-    "Humayun's Tomb": "हुमायूं का मकबरा",
-    "Humayuns Tomb": "हुमायूं का मकबरा",
-    "Lotus Temple": "कमल मंदिर",
-    "Akshardham Temple": "अक्षरधाम मंदिर",
-    "Akshardham": "अक्षरधाम",
-    "Jama Masjid": "जामा मस्जिद",
-    "Jantar Mantar": "जंतर मंतर",
-    "Purana Qila": "पुराना किला",
-    "Safdarjung Tomb": "सफदरजंग का मकबरा",
-    "Connaught Place": "कनॉट प्लेस",
-    "Rashtrapati Bhavan": "राष्ट्रपति भवन",
-    "Parliament House": "संसद भवन",
-    "Gateway of India": "गेटवे ऑफ इंडिया",
-    "Victoria Memorial": "विक्टोरिया मेमोरियल",
-    "Delhi": "दिल्ली",
-    "Agra": "आगरा",
+
+    "Qutub Minar":
+        "कुतुब मीनार",
+
+    "Qutb Minar":
+        "कुतुब मीनार",
+
+    "Qutub":
+        "कुतुब",
+
+    "Red Fort":
+        "लाल किला",
+
+    "Lal Qila":
+        "लाल किला",
+
+    "India Gate":
+        "इंडिया गेट",
+
+    "Taj Mahal":
+        "ताज महल",
+
+    "Agra Fort":
+        "आगरा किला",
+
+    "Humayun's Tomb":
+        "हुमायूं का मकबरा",
+
+    "Humayuns Tomb":
+        "हुमायूं का मकबरा",
+
+    "Lotus Temple":
+        "कमल मंदिर",
+
+    "Akshardham Temple":
+        "अक्षरधाम मंदिर",
+
+    "Akshardham":
+        "अक्षरधाम",
+
+    "Jama Masjid":
+        "जामा मस्जिद",
+
+    "Jantar Mantar":
+        "जंतर मंतर",
+
+    "Purana Qila":
+        "पुराना किला",
+
+    "Lodhi Garden":
+        "लोधी गार्डन",
+
+    "Lodi Garden":
+        "लोधी गार्डन",
+
+    "Safdarjung Tomb":
+        "सफदरजंग का मकबरा",
+
+    "Connaught Place":
+        "कनॉट प्लेस",
+
+    "Rashtrapati Bhavan":
+        "राष्ट्रपति भवन",
+
+    "Parliament House":
+        "संसद भवन",
+
+    "Gateway of India":
+        "गेटवे ऑफ इंडिया",
+
+    "Victoria Memorial":
+        "विक्टोरिया मेमोरियल",
+
+    "Delhi":
+        "दिल्ली",
+
+    "Agra":
+        "आगरा",
 }
 
 
@@ -111,38 +225,80 @@ ENGLISH_TO_HINDI_PLACES = {
 # ============================================================
 
 ENGLISH_PLACE_CORRECTIONS = {
-    "QUTUB_MAR": "Qutub Minar",
-    "QUTUB_MINAR": "Qutub Minar",
-    "Qutub Mar": "Qutub Minar",
-    "Qutb Minar": "Qutub Minar",
-    "Kutub Minar": "Qutub Minar",
-    "Kutub Tower": "Qutub Minar",
-    "Qutub Tower": "Qutub Minar",
 
-    "RED_FORT": "Red Fort",
-    "PALCHOLDER0": "Red Fort",
-    "PALHOLDER0": "Red Fort",
-    "PALCHOLDER": "Red Fort",
-    "Red Kila": "Red Fort",
-    "Lal Kila": "Red Fort",
-    "Lal Qila": "Red Fort",
+    "QUTUB_MAR":
+        "Qutub Minar",
 
-    "Humayun Tomb": "Humayun's Tomb",
-    "Jama Mosque": "Jama Masjid",
-    "Akshardham": "Akshardham Temple",
-    "Old Fort": "Purana Qila",
-    "Lodi Garden": "Lodhi Garden",
+    "QUTUB_MINAR":
+        "Qutub Minar",
+
+    "Qutub Mar":
+        "Qutub Minar",
+
+    "Qutb Minar":
+        "Qutub Minar",
+
+    "Kutub Minar":
+        "Qutub Minar",
+
+    "Kutub Tower":
+        "Qutub Minar",
+
+    "Qutub Tower":
+        "Qutub Minar",
+
+    "RED_FORT":
+        "Red Fort",
+
+    "PALCHOLDER0":
+        "Red Fort",
+
+    "PALHOLDER0":
+        "Red Fort",
+
+    "PALCHOLDER":
+        "Red Fort",
+
+    "Red Kila":
+        "Red Fort",
+
+    "Lal Kila":
+        "Red Fort",
+
+    "Lal Qila":
+        "Red Fort",
+
+    "Humayun Tomb":
+        "Humayun's Tomb",
+
+    "Jama Mosque":
+        "Jama Masjid",
+
+    "Akshardham":
+        "Akshardham Temple",
+
+    "Old Fort":
+        "Purana Qila",
+
+    "Lodi Garden":
+        "Lodhi Garden",
 }
 
 
 # ============================================================
-# FALLBACKS
+# COMMON FALLBACKS
 # ============================================================
 
 COMMON_HINDI_FALLBACKS = {
-    "नमस्ते": "Hello.",
-    "धन्यवाद": "Thank you.",
-    "शुक्रिया": "Thank you.",
+
+    "नमस्ते":
+        "Hello.",
+
+    "धन्यवाद":
+        "Thank you.",
+
+    "शुक्रिया":
+        "Thank you.",
 
     "मैं दिल्ली जा रहा हूँ":
         "I am going to Delhi.",
@@ -155,6 +311,18 @@ COMMON_HINDI_FALLBACKS = {
 
     "मैं दिल्ली जा रही हूं":
         "I am going to Delhi.",
+
+    "मैं आज दिल्ली जा रहा हूँ":
+        "I am going to Delhi today.",
+
+    "मैं आज दिल्ली जा रहा हूं":
+        "I am going to Delhi today.",
+
+    "मैं आज दिल्ली जा रही हूँ":
+        "I am going to Delhi today.",
+
+    "मैं आज दिल्ली जा रही हूं":
+        "I am going to Delhi today.",
 
     "आज मैं दिल्ली जा रहा हूँ":
         "Today I am going to Delhi.",
@@ -183,9 +351,15 @@ COMMON_HINDI_FALLBACKS = {
 
 
 COMMON_ENGLISH_FALLBACKS = {
-    "hello": "नमस्ते।",
-    "hi": "नमस्ते।",
-    "thank you": "धन्यवाद।",
+
+    "hello":
+        "नमस्ते।",
+
+    "hi":
+        "नमस्ते।",
+
+    "thank you":
+        "धन्यवाद।",
 
     "i am going to delhi":
         "मैं दिल्ली जा रहा हूँ।",
@@ -196,7 +370,7 @@ COMMON_ENGLISH_FALLBACKS = {
 
 
 # ============================================================
-# NORMALIZE
+# NORMALIZE TEXT
 # ============================================================
 
 def normalize_text(text):
@@ -206,9 +380,20 @@ def normalize_text(text):
 
     text = str(text).strip()
 
-    text = text.replace("।", "")
-    text = text.replace("?", "")
-    text = text.replace("!", "")
+    text = text.replace(
+        "।",
+        "",
+    )
+
+    text = text.replace(
+        "?",
+        "",
+    )
+
+    text = text.replace(
+        "!",
+        "",
+    )
 
     text = re.sub(
         r"\s+",
@@ -220,23 +405,22 @@ def normalize_text(text):
 
 
 # ============================================================
-# MIXED HINDI NORMALIZATION
+# MIXED HINDI + ENGLISH PLACE NORMALIZATION
 # ============================================================
 
 def normalize_mixed_hindi(text):
 
     """
     Convert known English place names inside Hindi sentences
-    into Hindi script before sending the sentence to the
-    Hindi -> English model.
+    to Hindi script.
 
     Example:
 
-        आज मैं Delhi जा रहा हूं
+        मैं आज Delhi जा रहा हूं
 
     becomes:
 
-        आज मैं दिल्ली जा रहा हूं
+        मैं आज दिल्ली जा रहा हूं
     """
 
     if not text:
@@ -244,16 +428,13 @@ def normalize_mixed_hindi(text):
 
     result = text
 
-    # Longest names first so that
-    # "Qutub Minar" is processed before "Qutub".
-
-    places = sorted(
+    sorted_places = sorted(
         ENGLISH_TO_HINDI_PLACES.items(),
         key=lambda item: len(item[0]),
         reverse=True,
     )
 
-    for english, hindi in places:
+    for english, hindi in sorted_places:
 
         result = re.sub(
             re.escape(english),
@@ -266,13 +447,13 @@ def normalize_mixed_hindi(text):
 
 
 # ============================================================
-# CORRECT ENGLISH PLACE NAMES
+# CORRECT ENGLISH MODEL OUTPUT
 # ============================================================
 
 def correct_english_place_names(text):
 
     if not text:
-        return text
+        return ""
 
     result = text
 
@@ -293,23 +474,17 @@ def correct_english_place_names(text):
 
 
 # ============================================================
-# RESTORE / NORMALIZE PLACE NAMES IN OUTPUT
+# CONVERT HINDI PLACE NAMES IN ENGLISH OUTPUT
 # ============================================================
 
 def normalize_translation_output(text):
 
     if not text:
-        return text
+        return ""
 
-    result = text
-
-    # Correct common English variations.
     result = correct_english_place_names(
-        result
+        text
     )
-
-    # If the model returns Hindi place names,
-    # convert them to canonical English place names.
 
     for hindi, english in sorted(
         HINDI_PLACE_NAMES.items(),
@@ -326,7 +501,7 @@ def normalize_translation_output(text):
 
 
 # ============================================================
-# HUGGING FACE REQUEST
+# HUGGING FACE API
 # ============================================================
 
 def _huggingface_translate(
@@ -338,7 +513,7 @@ def _huggingface_translate(
 
         print(
             "[NativeLanguage] "
-            "ERROR: HF_TOKEN is not configured."
+            "ERROR: HF_TOKEN is missing."
         )
 
         return None
@@ -349,6 +524,7 @@ def _huggingface_translate(
     )
 
     headers = {
+
         "Authorization":
             f"Bearer {HF_TOKEN}",
 
@@ -360,7 +536,10 @@ def _huggingface_translate(
     }
 
     payload = {
-        "inputs": text,
+
+        "inputs":
+            text,
+
         "options": {
             "wait_for_model": True,
         },
@@ -403,7 +582,7 @@ def _huggingface_translate(
 
             print(
                 "[NativeLanguage] "
-                "HF ERROR:",
+                "HF REQUEST FAILED:",
                 response.status_code,
             )
 
@@ -412,43 +591,53 @@ def _huggingface_translate(
         data = response.json()
 
         # ----------------------------------------------------
-        # Standard translation response
+        # Normal translation response
         # ----------------------------------------------------
 
-        if isinstance(data, list):
+        if isinstance(
+            data,
+            list,
+        ):
 
-            if data:
+            for item in data:
 
-                first = data[0]
+                if not isinstance(
+                    item,
+                    dict,
+                ):
+                    continue
 
-                if isinstance(first, dict):
-
-                    translated = (
-                        first.get(
-                            "translation_text"
-                        )
-                        or first.get(
-                            "generated_text"
-                        )
+                translated = (
+                    item.get(
+                        "translation_text"
                     )
+                    or
+                    item.get(
+                        "generated_text"
+                    )
+                )
 
-                    if translated:
+                if translated:
 
-                        return str(
-                            translated
-                        ).strip()
+                    return str(
+                        translated
+                    ).strip()
 
         # ----------------------------------------------------
         # Object response
         # ----------------------------------------------------
 
-        if isinstance(data, dict):
+        if isinstance(
+            data,
+            dict,
+        ):
 
             translated = (
                 data.get(
                     "translation_text"
                 )
-                or data.get(
+                or
+                data.get(
                     "generated_text"
                 )
             )
@@ -470,7 +659,7 @@ def _huggingface_translate(
 
         print(
             "[NativeLanguage] "
-            "HF REQUEST TIMEOUT"
+            "HF request timed out."
         )
 
         return None
@@ -479,7 +668,7 @@ def _huggingface_translate(
 
         print(
             "[NativeLanguage] "
-            "HF NETWORK ERROR:",
+            "HF network error:",
             repr(error),
         )
 
@@ -489,7 +678,7 @@ def _huggingface_translate(
 
         print(
             "[NativeLanguage] "
-            "HF ERROR:",
+            "HF unexpected error:",
             repr(error),
         )
 
@@ -497,25 +686,38 @@ def _huggingface_translate(
 
 
 # ============================================================
-# HINDI FALLBACK
+# FIND KNOWN HINDI FALLBACK
 # ============================================================
 
-def _fallback_hindi_to_english(text):
+def find_known_hindi_fallback(text):
 
     normalized = normalize_text(
         text
     )
 
-    # Exact fallback.
+    normalized = normalize_mixed_hindi(
+        normalized
+    )
+
+    # --------------------------------------------------------
+    # Exact known sentence
+    # --------------------------------------------------------
+
     for hindi, english in (
         COMMON_HINDI_FALLBACKS.items()
     ):
 
-        if normalize_text(hindi) == normalized:
+        if (
+            normalize_text(hindi)
+            == normalized
+        ):
 
             return english
 
-    # Travel patterns.
+    # --------------------------------------------------------
+    # Generic "मैं [PLACE] जा रहा हूं"
+    # --------------------------------------------------------
+
     for hindi_place, english_place in sorted(
         HINDI_PLACE_NAMES.items(),
         key=lambda item: len(item[0]),
@@ -528,6 +730,10 @@ def _fallback_hindi_to_english(text):
 
         patterns = [
 
+            # ----------------------------------------------
+            # मैं दिल्ली जा रहा हूं
+            # ----------------------------------------------
+
             (
                 rf"^मैं\s+{place}\s+जा\s+रहा\s+हूं$",
                 f"I am going to {english_place}.",
@@ -537,6 +743,38 @@ def _fallback_hindi_to_english(text):
                 rf"^मैं\s+{place}\s+जा\s+रहा\s+हूँ$",
                 f"I am going to {english_place}.",
             ),
+
+            # ----------------------------------------------
+            # मैं आज दिल्ली जा रहा हूं
+            # ----------------------------------------------
+
+            (
+                rf"^मैं\s+आज\s+{place}\s+जा\s+रहा\s+हूं$",
+                f"I am going to {english_place} today.",
+            ),
+
+            (
+                rf"^मैं\s+आज\s+{place}\s+जा\s+रहा\s+हूँ$",
+                f"I am going to {english_place} today.",
+            ),
+
+            # ----------------------------------------------
+            # आज मैं दिल्ली जा रहा हूं
+            # ----------------------------------------------
+
+            (
+                rf"^आज\s+मैं\s+{place}\s+जा\s+रहा\s+हूं$",
+                f"Today I am going to {english_place}.",
+            ),
+
+            (
+                rf"^आज\s+मैं\s+{place}\s+जा\s+रहा\s+हूँ$",
+                f"Today I am going to {english_place}.",
+            ),
+
+            # ----------------------------------------------
+            # Female forms
+            # ----------------------------------------------
 
             (
                 rf"^मैं\s+{place}\s+जा\s+रही\s+हूं$",
@@ -549,6 +787,30 @@ def _fallback_hindi_to_english(text):
             ),
 
             (
+                rf"^मैं\s+आज\s+{place}\s+जा\s+रही\s+हूं$",
+                f"I am going to {english_place} today.",
+            ),
+
+            (
+                rf"^मैं\s+आज\s+{place}\s+जा\s+रही\s+हूँ$",
+                f"I am going to {english_place} today.",
+            ),
+
+            (
+                rf"^आज\s+मैं\s+{place}\s+जा\s+रही\s+हूं$",
+                f"Today I am going to {english_place}.",
+            ),
+
+            (
+                rf"^आज\s+मैं\s+{place}\s+जा\s+रही\s+हूँ$",
+                f"Today I am going to {english_place}.",
+            ),
+
+            # ----------------------------------------------
+            # देखना
+            # ----------------------------------------------
+
+            (
                 rf"^मैं\s+{place}\s+देखने\s+जा\s+रहा\s+हूं$",
                 f"I am going to see {english_place}.",
             ),
@@ -557,6 +819,10 @@ def _fallback_hindi_to_english(text):
                 rf"^मैं\s+{place}\s+देखने\s+जा\s+रहा\s+हूँ$",
                 f"I am going to see {english_place}.",
             ),
+
+            # ----------------------------------------------
+            # जाना चाहता हूं
+            # ----------------------------------------------
 
             (
                 rf"^मैं\s+{place}\s+जाना\s+चाहता\s+हूं$",
@@ -578,40 +844,7 @@ def _fallback_hindi_to_english(text):
 
                 return translation
 
-    # Last lightweight replacement.
-    result = text
-
-    for hindi, english in sorted(
-        HINDI_PLACE_NAMES.items(),
-        key=lambda item: len(item[0]),
-        reverse=True,
-    ):
-
-        result = result.replace(
-            hindi,
-            english,
-        )
-
-    return result
-
-
-# ============================================================
-# ENGLISH FALLBACK
-# ============================================================
-
-def _fallback_english_to_hindi(text):
-
-    normalized = normalize_text(
-        text
-    ).lower()
-
-    if normalized in COMMON_ENGLISH_FALLBACKS:
-
-        return COMMON_ENGLISH_FALLBACKS[
-            normalized
-        ]
-
-    return text
+    return None
 
 
 # ============================================================
@@ -629,15 +862,22 @@ def translate_hindi_to_english(text):
     )
 
     print(
-        "\n[NativeLanguage] "
-        "HINDI -> ENGLISH ORIGINAL:",
+        "\n========================================"
+    )
+
+    print(
+        "[NativeLanguage] "
+        "HINDI -> ENGLISH"
+    )
+
+    print(
+        "[NativeLanguage] ORIGINAL:",
         original_text,
     )
 
     # ========================================================
-    # IMPORTANT:
-    # Convert known English place names inside a Hindi
-    # sentence to Hindi before sending it to the Hindi model.
+    # STEP 1:
+    # Normalize mixed English place names
     # ========================================================
 
     model_input = normalize_mixed_hindi(
@@ -646,12 +886,39 @@ def translate_hindi_to_english(text):
 
     print(
         "[NativeLanguage] "
-        "HINDI -> ENGLISH MODEL INPUT:",
+        "NORMALIZED:",
         model_input,
     )
 
     # ========================================================
-    # HUGGING FACE
+    # STEP 2:
+    # Deterministic known sentence
+    #
+    # This is checked BEFORE API so known sentences do not
+    # change randomly because of provider/model output.
+    # ========================================================
+
+    known_result = find_known_hindi_fallback(
+        model_input
+    )
+
+    if known_result:
+
+        print(
+            "[NativeLanguage] "
+            "KNOWN SENTENCE RESULT:",
+            known_result,
+        )
+
+        print(
+            "========================================\n"
+        )
+
+        return known_result
+
+    # ========================================================
+    # STEP 3:
+    # Hugging Face
     # ========================================================
 
     translated = _huggingface_translate(
@@ -671,25 +938,50 @@ def translate_hindi_to_english(text):
             translated,
         )
 
+        print(
+            "========================================\n"
+        )
+
         return translated
 
     # ========================================================
-    # FALLBACK
+    # STEP 4:
+    # Final fallback
     # ========================================================
 
-    print(
-        "[NativeLanguage] "
-        "HF translation failed. "
-        "Using fallback."
-    )
-
-    fallback = _fallback_hindi_to_english(
+    fallback = find_known_hindi_fallback(
         model_input
     )
 
-    return normalize_translation_output(
-        fallback
+    if fallback:
+
+        return fallback
+
+    # Replace known Hindi places at minimum.
+    result = model_input
+
+    for hindi, english in sorted(
+        HINDI_PLACE_NAMES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    ):
+
+        result = result.replace(
+            hindi,
+            english,
+        )
+
+    print(
+        "[NativeLanguage] "
+        "FINAL FALLBACK:",
+        result,
     )
+
+    print(
+        "========================================\n"
+    )
+
+    return result
 
 
 # ============================================================
@@ -702,18 +994,30 @@ def translate_english_to_hindi(text):
 
         return ""
 
-    text = normalize_text(
+    original_text = normalize_text(
         text
     )
 
     print(
-        "\n[NativeLanguage] "
-        "ENGLISH -> HINDI:",
-        text,
+        "\n========================================"
     )
 
+    print(
+        "[NativeLanguage] "
+        "ENGLISH -> HINDI"
+    )
+
+    print(
+        "[NativeLanguage] ORIGINAL:",
+        original_text,
+    )
+
+    # ========================================================
+    # HF
+    # ========================================================
+
     translated = _huggingface_translate(
-        text,
+        original_text,
         EN_HI_MODEL,
     )
 
@@ -721,21 +1025,34 @@ def translate_english_to_hindi(text):
 
         print(
             "[NativeLanguage] "
-            "HF RESULT:",
+            "HF FINAL RESULT:",
             translated,
         )
 
-        return translated.strip()
+        print(
+            "========================================\n"
+        )
 
-    print(
-        "[NativeLanguage] "
-        "HF translation failed. "
-        "Using fallback."
+        return translated
+
+    # ========================================================
+    # FALLBACK
+    # ========================================================
+
+    normalized = (
+        normalize_text(
+            original_text
+        )
+        .lower()
     )
 
-    return _fallback_english_to_hindi(
-        text
-    )
+    if normalized in COMMON_ENGLISH_FALLBACKS:
+
+        return COMMON_ENGLISH_FALLBACKS[
+            normalized
+        ]
+
+    return original_text
 
 
 # ============================================================
