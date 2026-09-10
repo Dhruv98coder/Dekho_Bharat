@@ -27,7 +27,6 @@ def _get_classifier():
 
     return classifier
 
-
 # ============================================================
 # LIGHTWEIGHT INDIAN-SCRIPT DETECTION
 # ============================================================

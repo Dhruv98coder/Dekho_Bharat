@@ -1,72 +1,45 @@
 """
 Native Language AI Translation Service
 
-Primary translator:
-    Helsinki-NLP/opus-mt-hi-en
-    Helsinki-NLP/opus-mt-en-hi
+Translation is performed through Hugging Face Inference API.
 
-The ML model is ALWAYS attempted first.
+Direction:
+    Hindi -> English
+    English -> Hindi
 
-Fallback is used only when:
-    - model cannot be loaded
-    - model inference fails
+The Hugging Face token MUST stay on the Django/Render server.
+Never put HF_TOKEN in frontend JavaScript.
 """
 
 import os
 import re
-import threading
+import requests
 
 
 # ============================================================
-# MODEL CONFIGURATION
+# CONFIGURATION
 # ============================================================
+
+HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 
 HI_EN_MODEL = os.getenv(
     "NATIVE_HI_EN_MODEL",
     "Helsinki-NLP/opus-mt-hi-en",
-)
+).strip()
 
 EN_HI_MODEL = os.getenv(
     "NATIVE_EN_HI_MODEL",
     "Helsinki-NLP/opus-mt-en-hi",
+).strip()
+
+
+# ============================================================
+# HUGGING FACE API
+# ============================================================
+
+HF_API_BASE = (
+    "https://router.huggingface.co/hf-inference/models/"
 )
-
-
-# ============================================================
-# ENABLE MODEL
-# ============================================================
-
-MODEL_ENABLED = (
-    os.getenv(
-        "NATIVE_TRANSLATION_MODEL_ENABLED",
-        "True",
-    )
-    .strip()
-    .lower()
-    in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-)
-
-
-# ============================================================
-# MODEL CACHE
-# ============================================================
-
-_hi_en_tokenizer = None
-_hi_en_model = None
-
-_en_hi_tokenizer = None
-_en_hi_model = None
-
-_hi_en_lock = threading.Lock()
-_en_hi_lock = threading.Lock()
-
-_hi_en_failed = False
-_en_hi_failed = False
 
 
 # ============================================================
@@ -124,31 +97,35 @@ ENGLISH_PLACE_CORRECTIONS = {
 
 
 # ============================================================
-# LAST-RESORT FALLBACKS
-# ============================================================
-#
-# These are NOT the main translation system.
-#
+# FALLBACKS
 # ============================================================
 
 COMMON_HINDI_FALLBACKS = {
     "नमस्ते": "Hello.",
     "धन्यवाद": "Thank you.",
     "शुक्रिया": "Thank you.",
+
     "मैं दिल्ली जा रहा हूँ":
         "I am going to Delhi.",
+
     "मैं दिल्ली जा रहा हूं":
         "I am going to Delhi.",
+
     "मैं दिल्ली जा रही हूँ":
         "I am going to Delhi.",
+
     "मैं दिल्ली जा रही हूं":
         "I am going to Delhi.",
+
     "मैं खाना खाने जा रहा हूँ":
         "I am going to eat food.",
+
     "मैं खाना खाने जा रहा हूं":
         "I am going to eat food.",
+
     "मैं खाना खाने जा रही हूँ":
         "I am going to eat food.",
+
     "मैं खाना खाने जा रही हूं":
         "I am going to eat food.",
 }
@@ -158,10 +135,12 @@ COMMON_ENGLISH_FALLBACKS = {
     "hello": "नमस्ते।",
     "hi": "नमस्ते।",
     "thank you": "धन्यवाद।",
+
     "i am going to delhi":
         "मैं दिल्ली जा रहा हूँ।",
+
     "i want to go to delhi":
-        "मैं दिल्ली जाना चाहता हूँ।",
+        "मैं दिल्ली जाना चाहता हूँ。",
 }
 
 
@@ -176,20 +155,9 @@ def normalize_text(text):
 
     text = str(text).strip()
 
-    text = text.replace(
-        "।",
-        "",
-    )
-
-    text = text.replace(
-        "?",
-        "",
-    )
-
-    text = text.replace(
-        "!",
-        "",
-    )
+    text = text.replace("।", "")
+    text = text.replace("?", "")
+    text = text.replace("!", "")
 
     text = re.sub(
         r"\s+",
@@ -201,7 +169,7 @@ def normalize_text(text):
 
 
 # ============================================================
-# CORRECT ENGLISH PLACE NAMES
+# PLACE CORRECTION
 # ============================================================
 
 def correct_english_place_names(text):
@@ -226,320 +194,148 @@ def correct_english_place_names(text):
 
 
 # ============================================================
-# REPLACE PLACE NAMES
+# HF REQUEST
 # ============================================================
 
-def replace_hindi_place_names(text):
+def _huggingface_translate(text, model_name):
 
-    if not text:
-        return text
-
-    result = text
-
-    for hindi, english in sorted(
-        HINDI_PLACE_NAMES.items(),
-        key=lambda item: len(item[0]),
-        reverse=True,
-    ):
-
-        result = result.replace(
-            hindi,
-            english,
-        )
-
-    return result
-
-
-# ============================================================
-# LOAD HINDI -> ENGLISH MODEL
-# ============================================================
-
-def _get_hi_en_model():
-
-    global _hi_en_tokenizer
-    global _hi_en_model
-    global _hi_en_failed
-
-    if (
-        _hi_en_tokenizer is not None
-        and _hi_en_model is not None
-    ):
-        return (
-            _hi_en_tokenizer,
-            _hi_en_model,
-        )
-
-    if not MODEL_ENABLED:
+    if not HF_TOKEN:
 
         print(
-            "[NativeLanguage] "
-            "MODEL_ENABLED=False"
+            "[NativeLanguage] ERROR: HF_TOKEN not configured."
         )
 
-        return None, None
-
-    if _hi_en_failed:
-
-        return None, None
-
-    with _hi_en_lock:
-
-        if (
-            _hi_en_tokenizer is not None
-            and _hi_en_model is not None
-        ):
-            return (
-                _hi_en_tokenizer,
-                _hi_en_model,
-            )
-
-        try:
-
-            print(
-                "========================================"
-            )
-
-            print(
-                "[NativeLanguage] "
-                "LOADING REAL HINDI -> ENGLISH MODEL"
-            )
-
-            print(
-                "[NativeLanguage] MODEL:",
-                HI_EN_MODEL,
-            )
-
-            from transformers import (
-                AutoTokenizer,
-                AutoModelForSeq2SeqLM,
-            )
-
-            tokenizer = (
-                AutoTokenizer.from_pretrained(
-                    HI_EN_MODEL,
-                    local_files_only=False,
-                )
-            )
-
-            model = (
-                AutoModelForSeq2SeqLM.from_pretrained(
-                    HI_EN_MODEL,
-                    local_files_only=False,
-                )
-            )
-
-            model.eval()
-
-            _hi_en_tokenizer = tokenizer
-            _hi_en_model = model
-
-            print(
-                "[NativeLanguage] "
-                "HINDI -> ENGLISH MODEL LOADED"
-            )
-
-            print(
-                "========================================"
-            )
-
-            return (
-                tokenizer,
-                model,
-            )
-
-        except Exception as error:
-
-            _hi_en_failed = True
-
-            print(
-                "========================================"
-            )
-
-            print(
-                "[NativeLanguage] "
-                "HINDI -> ENGLISH MODEL LOAD FAILED"
-            )
-
-            print(
-                "[NativeLanguage] ERROR:",
-                repr(error),
-            )
-
-            print(
-                "========================================"
-            )
-
-            return None, None
-
-
-# ============================================================
-# LOAD ENGLISH -> HINDI MODEL
-# ============================================================
-
-def _get_en_hi_model():
-
-    global _en_hi_tokenizer
-    global _en_hi_model
-    global _en_hi_failed
-
-    if (
-        _en_hi_tokenizer is not None
-        and _en_hi_model is not None
-    ):
-        return (
-            _en_hi_tokenizer,
-            _en_hi_model,
-        )
-
-    if not MODEL_ENABLED:
-
-        print(
-            "[NativeLanguage] "
-            "MODEL_ENABLED=False"
-        )
-
-        return None, None
-
-    if _en_hi_failed:
-
-        return None, None
-
-    with _en_hi_lock:
-
-        if (
-            _en_hi_tokenizer is not None
-            and _en_hi_model is not None
-        ):
-            return (
-                _en_hi_tokenizer,
-                _en_hi_model,
-            )
-
-        try:
-
-            print(
-                "[NativeLanguage] "
-                "LOADING REAL ENGLISH -> HINDI MODEL"
-            )
-
-            print(
-                "[NativeLanguage] MODEL:",
-                EN_HI_MODEL,
-            )
-
-            from transformers import (
-                AutoTokenizer,
-                AutoModelForSeq2SeqLM,
-            )
-
-            tokenizer = (
-                AutoTokenizer.from_pretrained(
-                    EN_HI_MODEL,
-                    local_files_only=False,
-                )
-            )
-
-            model = (
-                AutoModelForSeq2SeqLM.from_pretrained(
-                    EN_HI_MODEL,
-                    local_files_only=False,
-                )
-            )
-
-            model.eval()
-
-            _en_hi_tokenizer = tokenizer
-            _en_hi_model = model
-
-            print(
-                "[NativeLanguage] "
-                "ENGLISH -> HINDI MODEL LOADED"
-            )
-
-            return (
-                tokenizer,
-                model,
-            )
-
-        except Exception as error:
-
-            _en_hi_failed = True
-
-            print(
-                "[NativeLanguage] "
-                "ENGLISH -> HINDI MODEL LOAD ERROR:",
-                repr(error),
-            )
-
-            return None, None
-
-
-# ============================================================
-# RUN HUGGING FACE MODEL
-# ============================================================
-
-def _run_model(
-    tokenizer,
-    model,
-    text,
-):
-
-    import torch
-
-    print(
-        "[NativeLanguage] "
-        "RUNNING MODEL ON:",
-        text,
-    )
-
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=128,
-    )
-
-    with torch.no_grad():
-
-        output = model.generate(
-            **inputs,
-            max_length=128,
-            num_beams=4,
-            do_sample=False,
-        )
-
-    translated = tokenizer.decode(
-        output[0],
-        skip_special_tokens=True,
-    )
-
-    translated = translated.strip()
-
-    if not translated:
         return None
 
-    return translated
+    url = HF_API_BASE + model_name
+
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    payload = {
+        "inputs": text,
+        "options": {
+            "wait_for_model": True
+        },
+    }
+
+    try:
+
+        print(
+            "[NativeLanguage] "
+            "Calling Hugging Face model:",
+            model_name,
+        )
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+
+        print(
+            "[NativeLanguage] "
+            "HF STATUS:",
+            response.status_code,
+        )
+
+        print(
+            "[NativeLanguage] "
+            "HF RESPONSE:",
+            response.text[:1000],
+        )
+
+        if not response.ok:
+
+            print(
+                "[NativeLanguage] "
+                "HF API ERROR:",
+                response.status_code,
+            )
+
+            return None
+
+        data = response.json()
+
+        # Typical translation response:
+        # [{"translation_text": "..."}]
+
+        if isinstance(data, list) and data:
+
+            item = data[0]
+
+            if isinstance(item, dict):
+
+                translated = (
+                    item.get("translation_text")
+                    or item.get("generated_text")
+                )
+
+                if translated:
+                    return str(
+                        translated
+                    ).strip()
+
+        # Some endpoints/providers can return
+        # a direct object.
+
+        if isinstance(data, dict):
+
+            translated = (
+                data.get("translation_text")
+                or data.get("generated_text")
+            )
+
+            if translated:
+                return str(
+                    translated
+                ).strip()
+
+        print(
+            "[NativeLanguage] "
+            "HF returned no translation."
+        )
+
+        return None
+
+    except requests.Timeout:
+
+        print(
+            "[NativeLanguage] "
+            "HF API TIMEOUT"
+        )
+
+        return None
+
+    except Exception as error:
+
+        print(
+            "[NativeLanguage] "
+            "HF API REQUEST ERROR:",
+            repr(error),
+        )
+
+        return None
 
 
 # ============================================================
-# FALLBACK HINDI TRANSLATION
+# HINDI FALLBACK
 # ============================================================
 
 def _fallback_hindi_to_english(text):
 
-    normalized = normalize_text(
-        text
-    )
+    normalized = normalize_text(text)
 
-    # Exact fallback.
     for hindi, english in COMMON_HINDI_FALLBACKS.items():
 
         if normalize_text(hindi) == normalized:
 
             return english
 
-    # Generic travel patterns.
     for hindi_place, english_place in sorted(
         HINDI_PLACE_NAMES.items(),
         key=lambda item: len(item[0]),
@@ -599,15 +395,39 @@ def _fallback_hindi_to_english(text):
                 pattern,
                 normalized,
             ):
-
                 return translation
 
-    replaced = replace_hindi_place_names(
-        text
-    )
+    for hindi, english in sorted(
+        HINDI_PLACE_NAMES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    ):
 
-    if replaced != text:
-        return replaced
+        if hindi in text:
+
+            text = text.replace(
+                hindi,
+                english,
+            )
+
+    return text
+
+
+# ============================================================
+# ENGLISH FALLBACK
+# ============================================================
+
+def _fallback_english_to_hindi(text):
+
+    normalized = normalize_text(
+        text
+    ).lower()
+
+    if normalized in COMMON_ENGLISH_FALLBACKS:
+
+        return COMMON_ENGLISH_FALLBACKS[
+            normalized
+        ]
 
     return text
 
@@ -625,60 +445,34 @@ def translate_hindi_to_english(text):
 
     print(
         "\n[NativeLanguage] "
-        "HINDI -> ENGLISH REQUEST:",
+        "HINDI -> ENGLISH:",
         text,
     )
 
-    # ========================================================
-    # PRIMARY = REAL ML MODEL
-    # ========================================================
+    translated = _huggingface_translate(
+        text,
+        HI_EN_MODEL,
+    )
 
-    tokenizer, model = _get_hi_en_model()
+    if translated:
 
-    if (
-        tokenizer is not None
-        and model is not None
-    ):
-
-        try:
-
-            translated = _run_model(
-                tokenizer,
-                model,
-                text,
+        translated = (
+            correct_english_place_names(
+                translated
             )
+        )
 
-            if translated:
+        print(
+            "[NativeLanguage] "
+            "HF RESULT:",
+            translated,
+        )
 
-                translated = (
-                    correct_english_place_names(
-                        translated
-                    )
-                )
-
-                print(
-                    "[NativeLanguage] "
-                    "REAL ML RESULT:",
-                    translated,
-                )
-
-                return translated
-
-        except Exception as error:
-
-            print(
-                "[NativeLanguage] "
-                "ML INFERENCE ERROR:",
-                repr(error),
-            )
-
-    # ========================================================
-    # ONLY NOW FALLBACK
-    # ========================================================
+        return translated
 
     print(
         "[NativeLanguage] "
-        "REAL MODEL FAILED. USING FALLBACK."
+        "HF failed. Using fallback."
     )
 
     return _fallback_hindi_to_english(
@@ -695,67 +489,37 @@ def translate_english_to_hindi(text):
     if not text or not str(text).strip():
         return ""
 
-    text = normalize_text(
-        text
-    )
+    text = normalize_text(text)
 
     print(
         "\n[NativeLanguage] "
-        "ENGLISH -> HINDI REQUEST:",
+        "ENGLISH -> HINDI:",
         text,
     )
 
-    # ========================================================
-    # PRIMARY = REAL ML MODEL
-    # ========================================================
+    translated = _huggingface_translate(
+        text,
+        EN_HI_MODEL,
+    )
 
-    tokenizer, model = _get_en_hi_model()
+    if translated:
 
-    if (
-        tokenizer is not None
-        and model is not None
-    ):
+        print(
+            "[NativeLanguage] "
+            "HF RESULT:",
+            translated,
+        )
 
-        try:
+        return translated
 
-            translated = _run_model(
-                tokenizer,
-                model,
-                text,
-            )
+    print(
+        "[NativeLanguage] "
+        "HF failed. Using fallback."
+    )
 
-            if translated:
-
-                print(
-                    "[NativeLanguage] "
-                    "REAL ML RESULT:",
-                    translated,
-                )
-
-                return translated
-
-        except Exception as error:
-
-            print(
-                "[NativeLanguage] "
-                "ENGLISH -> HINDI "
-                "ML ERROR:",
-                repr(error),
-            )
-
-    # ========================================================
-    # FALLBACK
-    # ========================================================
-
-    normalized = text.lower()
-
-    if normalized in COMMON_ENGLISH_FALLBACKS:
-
-        return COMMON_ENGLISH_FALLBACKS[
-            normalized
-        ]
-
-    return text
+    return _fallback_english_to_hindi(
+        text
+    )
 
 
 # ============================================================
