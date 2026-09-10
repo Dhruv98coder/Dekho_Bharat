@@ -3,12 +3,13 @@ Native Language AI Translation Service
 
 Translation is performed through Hugging Face Inference API.
 
-Direction:
+Supported direction:
     Hindi -> English
     English -> Hindi
 
-The Hugging Face token MUST stay on the Django/Render server.
-Never put HF_TOKEN in frontend JavaScript.
+Important:
+    HF_TOKEN must remain on the Django/Render server.
+    Never put the token in JavaScript.
 """
 
 import os
@@ -32,10 +33,6 @@ EN_HI_MODEL = os.getenv(
     "Helsinki-NLP/opus-mt-en-hi",
 ).strip()
 
-
-# ============================================================
-# HUGGING FACE API
-# ============================================================
 
 HF_API_BASE = (
     "https://router.huggingface.co/hf-inference/models/"
@@ -68,7 +65,49 @@ HINDI_PLACE_NAMES = {
 
 
 # ============================================================
-# ENGLISH PLACE CORRECTIONS
+# ENGLISH PLACE -> HINDI
+#
+# Used specifically for mixed Hindi-English sentences.
+#
+# Example:
+#     आज मैं Delhi जा रहा हूं
+#
+# becomes:
+#     आज मैं दिल्ली जा रहा हूं
+#
+# before sending the sentence to the Hindi model.
+# ============================================================
+
+ENGLISH_TO_HINDI_PLACES = {
+    "Qutub Minar": "कुतुब मीनार",
+    "Qutb Minar": "कुतुब मीनार",
+    "Qutub": "कुतुब",
+    "Red Fort": "लाल किला",
+    "Lal Qila": "लाल किला",
+    "India Gate": "इंडिया गेट",
+    "Taj Mahal": "ताज महल",
+    "Agra Fort": "आगरा किला",
+    "Humayun's Tomb": "हुमायूं का मकबरा",
+    "Humayuns Tomb": "हुमायूं का मकबरा",
+    "Lotus Temple": "कमल मंदिर",
+    "Akshardham Temple": "अक्षरधाम मंदिर",
+    "Akshardham": "अक्षरधाम",
+    "Jama Masjid": "जामा मस्जिद",
+    "Jantar Mantar": "जंतर मंतर",
+    "Purana Qila": "पुराना किला",
+    "Safdarjung Tomb": "सफदरजंग का मकबरा",
+    "Connaught Place": "कनॉट प्लेस",
+    "Rashtrapati Bhavan": "राष्ट्रपति भवन",
+    "Parliament House": "संसद भवन",
+    "Gateway of India": "गेटवे ऑफ इंडिया",
+    "Victoria Memorial": "विक्टोरिया मेमोरियल",
+    "Delhi": "दिल्ली",
+    "Agra": "आगरा",
+}
+
+
+# ============================================================
+# ENGLISH OUTPUT CORRECTIONS
 # ============================================================
 
 ENGLISH_PLACE_CORRECTIONS = {
@@ -117,6 +156,18 @@ COMMON_HINDI_FALLBACKS = {
     "मैं दिल्ली जा रही हूं":
         "I am going to Delhi.",
 
+    "आज मैं दिल्ली जा रहा हूँ":
+        "Today I am going to Delhi.",
+
+    "आज मैं दिल्ली जा रहा हूं":
+        "Today I am going to Delhi.",
+
+    "आज मैं दिल्ली जा रही हूँ":
+        "Today I am going to Delhi.",
+
+    "आज मैं दिल्ली जा रही हूं":
+        "Today I am going to Delhi.",
+
     "मैं खाना खाने जा रहा हूँ":
         "I am going to eat food.",
 
@@ -140,7 +191,7 @@ COMMON_ENGLISH_FALLBACKS = {
         "मैं दिल्ली जा रहा हूँ।",
 
     "i want to go to delhi":
-        "मैं दिल्ली जाना चाहता हूँ。",
+        "मैं दिल्ली जाना चाहता हूँ।",
 }
 
 
@@ -169,7 +220,53 @@ def normalize_text(text):
 
 
 # ============================================================
-# PLACE CORRECTION
+# MIXED HINDI NORMALIZATION
+# ============================================================
+
+def normalize_mixed_hindi(text):
+
+    """
+    Convert known English place names inside Hindi sentences
+    into Hindi script before sending the sentence to the
+    Hindi -> English model.
+
+    Example:
+
+        आज मैं Delhi जा रहा हूं
+
+    becomes:
+
+        आज मैं दिल्ली जा रहा हूं
+    """
+
+    if not text:
+        return ""
+
+    result = text
+
+    # Longest names first so that
+    # "Qutub Minar" is processed before "Qutub".
+
+    places = sorted(
+        ENGLISH_TO_HINDI_PLACES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+
+    for english, hindi in places:
+
+        result = re.sub(
+            re.escape(english),
+            hindi,
+            result,
+            flags=re.IGNORECASE,
+        )
+
+    return result.strip()
+
+
+# ============================================================
+# CORRECT ENGLISH PLACE NAMES
 # ============================================================
 
 def correct_english_place_names(text):
@@ -177,48 +274,95 @@ def correct_english_place_names(text):
     if not text:
         return text
 
+    result = text
+
     for wrong, correct in sorted(
         ENGLISH_PLACE_CORRECTIONS.items(),
         key=lambda item: len(item[0]),
         reverse=True,
     ):
 
-        text = re.sub(
+        result = re.sub(
             re.escape(wrong),
             correct,
-            text,
+            result,
             flags=re.IGNORECASE,
         )
 
-    return text.strip()
+    return result.strip()
 
 
 # ============================================================
-# HF REQUEST
+# RESTORE / NORMALIZE PLACE NAMES IN OUTPUT
 # ============================================================
 
-def _huggingface_translate(text, model_name):
+def normalize_translation_output(text):
+
+    if not text:
+        return text
+
+    result = text
+
+    # Correct common English variations.
+    result = correct_english_place_names(
+        result
+    )
+
+    # If the model returns Hindi place names,
+    # convert them to canonical English place names.
+
+    for hindi, english in sorted(
+        HINDI_PLACE_NAMES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    ):
+
+        result = result.replace(
+            hindi,
+            english,
+        )
+
+    return result.strip()
+
+
+# ============================================================
+# HUGGING FACE REQUEST
+# ============================================================
+
+def _huggingface_translate(
+    text,
+    model_name,
+):
 
     if not HF_TOKEN:
 
         print(
-            "[NativeLanguage] ERROR: HF_TOKEN not configured."
+            "[NativeLanguage] "
+            "ERROR: HF_TOKEN is not configured."
         )
 
         return None
 
-    url = HF_API_BASE + model_name
+    url = (
+        HF_API_BASE +
+        model_name
+    )
 
     headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Authorization":
+            f"Bearer {HF_TOKEN}",
+
+        "Content-Type":
+            "application/json",
+
+        "Accept":
+            "application/json",
     }
 
     payload = {
         "inputs": text,
         "options": {
-            "wait_for_model": True
+            "wait_for_model": True,
         },
     }
 
@@ -226,8 +370,14 @@ def _huggingface_translate(text, model_name):
 
         print(
             "[NativeLanguage] "
-            "Calling Hugging Face model:",
+            "HF MODEL:",
             model_name,
+        )
+
+        print(
+            "[NativeLanguage] "
+            "HF INPUT:",
+            text,
         )
 
         response = requests.post(
@@ -253,7 +403,7 @@ def _huggingface_translate(text, model_name):
 
             print(
                 "[NativeLanguage] "
-                "HF API ERROR:",
+                "HF ERROR:",
                 response.status_code,
             )
 
@@ -261,36 +411,50 @@ def _huggingface_translate(text, model_name):
 
         data = response.json()
 
-        # Typical translation response:
-        # [{"translation_text": "..."}]
+        # ----------------------------------------------------
+        # Standard translation response
+        # ----------------------------------------------------
 
-        if isinstance(data, list) and data:
+        if isinstance(data, list):
 
-            item = data[0]
+            if data:
 
-            if isinstance(item, dict):
+                first = data[0]
 
-                translated = (
-                    item.get("translation_text")
-                    or item.get("generated_text")
-                )
+                if isinstance(first, dict):
 
-                if translated:
-                    return str(
-                        translated
-                    ).strip()
+                    translated = (
+                        first.get(
+                            "translation_text"
+                        )
+                        or first.get(
+                            "generated_text"
+                        )
+                    )
 
-        # Some endpoints/providers can return
-        # a direct object.
+                    if translated:
+
+                        return str(
+                            translated
+                        ).strip()
+
+        # ----------------------------------------------------
+        # Object response
+        # ----------------------------------------------------
 
         if isinstance(data, dict):
 
             translated = (
-                data.get("translation_text")
-                or data.get("generated_text")
+                data.get(
+                    "translation_text"
+                )
+                or data.get(
+                    "generated_text"
+                )
             )
 
             if translated:
+
                 return str(
                     translated
                 ).strip()
@@ -306,7 +470,17 @@ def _huggingface_translate(text, model_name):
 
         print(
             "[NativeLanguage] "
-            "HF API TIMEOUT"
+            "HF REQUEST TIMEOUT"
+        )
+
+        return None
+
+    except requests.RequestException as error:
+
+        print(
+            "[NativeLanguage] "
+            "HF NETWORK ERROR:",
+            repr(error),
         )
 
         return None
@@ -315,7 +489,7 @@ def _huggingface_translate(text, model_name):
 
         print(
             "[NativeLanguage] "
-            "HF API REQUEST ERROR:",
+            "HF ERROR:",
             repr(error),
         )
 
@@ -328,14 +502,20 @@ def _huggingface_translate(text, model_name):
 
 def _fallback_hindi_to_english(text):
 
-    normalized = normalize_text(text)
+    normalized = normalize_text(
+        text
+    )
 
-    for hindi, english in COMMON_HINDI_FALLBACKS.items():
+    # Exact fallback.
+    for hindi, english in (
+        COMMON_HINDI_FALLBACKS.items()
+    ):
 
         if normalize_text(hindi) == normalized:
 
             return english
 
+    # Travel patterns.
     for hindi_place, english_place in sorted(
         HINDI_PLACE_NAMES.items(),
         key=lambda item: len(item[0]),
@@ -395,7 +575,11 @@ def _fallback_hindi_to_english(text):
                 pattern,
                 normalized,
             ):
+
                 return translation
+
+    # Last lightweight replacement.
+    result = text
 
     for hindi, english in sorted(
         HINDI_PLACE_NAMES.items(),
@@ -403,14 +587,12 @@ def _fallback_hindi_to_english(text):
         reverse=True,
     ):
 
-        if hindi in text:
+        result = result.replace(
+            hindi,
+            english,
+        )
 
-            text = text.replace(
-                hindi,
-                english,
-            )
-
-    return text
+    return result
 
 
 # ============================================================
@@ -439,44 +621,74 @@ def _fallback_english_to_hindi(text):
 def translate_hindi_to_english(text):
 
     if not text or not str(text).strip():
+
         return ""
 
-    text = normalize_text(text)
+    original_text = normalize_text(
+        text
+    )
 
     print(
         "\n[NativeLanguage] "
-        "HINDI -> ENGLISH:",
-        text,
+        "HINDI -> ENGLISH ORIGINAL:",
+        original_text,
     )
 
+    # ========================================================
+    # IMPORTANT:
+    # Convert known English place names inside a Hindi
+    # sentence to Hindi before sending it to the Hindi model.
+    # ========================================================
+
+    model_input = normalize_mixed_hindi(
+        original_text
+    )
+
+    print(
+        "[NativeLanguage] "
+        "HINDI -> ENGLISH MODEL INPUT:",
+        model_input,
+    )
+
+    # ========================================================
+    # HUGGING FACE
+    # ========================================================
+
     translated = _huggingface_translate(
-        text,
+        model_input,
         HI_EN_MODEL,
     )
 
     if translated:
 
-        translated = (
-            correct_english_place_names(
-                translated
-            )
+        translated = normalize_translation_output(
+            translated
         )
 
         print(
             "[NativeLanguage] "
-            "HF RESULT:",
+            "HF FINAL RESULT:",
             translated,
         )
 
         return translated
 
+    # ========================================================
+    # FALLBACK
+    # ========================================================
+
     print(
         "[NativeLanguage] "
-        "HF failed. Using fallback."
+        "HF translation failed. "
+        "Using fallback."
     )
 
-    return _fallback_hindi_to_english(
-        text
+    fallback = _fallback_hindi_to_english(
+        model_input
+    )
+
+    return normalize_translation_output(
+        fallback
     )
 
 
@@ -487,9 +699,12 @@ def translate_hindi_to_english(text):
 def translate_english_to_hindi(text):
 
     if not text or not str(text).strip():
+
         return ""
 
-    text = normalize_text(text)
+    text = normalize_text(
+        text
+    )
 
     print(
         "\n[NativeLanguage] "
@@ -510,11 +725,12 @@ def translate_english_to_hindi(text):
             translated,
         )
 
-        return translated
+        return translated.strip()
 
     print(
         "[NativeLanguage] "
-        "HF failed. Using fallback."
+        "HF translation failed. "
+        "Using fallback."
     )
 
     return _fallback_english_to_hindi(
