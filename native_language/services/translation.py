@@ -1,15 +1,22 @@
 """
 Native Language AI - Translation Service
 
-Render-safe Hindi <-> English translation service.
+PRIMARY:
+    Hugging Face MarianMT model
 
-IMPORTANT:
-- Lightweight/common Hindi sentences are translated without loading
-  Hugging Face / PyTorch models.
-- Hugging Face translation models remain available, but are disabled by
-  default to keep the Django Render deployment stable.
-- To enable them explicitly:
-      NATIVE_TRANSLATION_MODEL_ENABLED=True
+Hindi -> English:
+    Helsinki-NLP/opus-mt-hi-en
+
+English -> Hindi:
+    Helsinki-NLP/opus-mt-en-hi
+
+Design:
+    1. Real ML model is the PRIMARY translator.
+    2. Models are loaded lazily.
+    3. Model loading happens only when translation is requested.
+    4. Models are cached per Django worker.
+    5. Lightweight fallback is used ONLY when the model cannot load/fails.
+    6. Model is ENABLED by default.
 """
 
 import os
@@ -18,7 +25,7 @@ import threading
 
 
 # ============================================================
-# MODEL NAMES
+# MODEL CONFIGURATION
 # ============================================================
 
 HI_EN_MODEL = os.getenv(
@@ -37,20 +44,20 @@ EN_HI_MODEL = os.getenv(
 # ============================================================
 #
 # IMPORTANT:
-# Default is FALSE for Render stability.
-#
-# Local machine:
-#   You may set True if you want Hugging Face models.
+# Model is TRUE by default.
 #
 # Render:
-#   Keep False for the demo unless the service has enough RAM.
+#     NATIVE_TRANSLATION_MODEL_ENABLED=True
+#
+# Local:
+#     NATIVE_TRANSLATION_MODEL_ENABLED=True
 #
 # ============================================================
 
 NATIVE_TRANSLATION_MODEL_ENABLED = (
     os.getenv(
         "NATIVE_TRANSLATION_MODEL_ENABLED",
-        "False",
+        "True",
     )
     .strip()
     .lower()
@@ -75,6 +82,9 @@ _en_hi_model = None
 
 _hi_en_loading = False
 _en_hi_loading = False
+
+_hi_en_failed = False
+_en_hi_failed = False
 
 _hi_en_lock = threading.Lock()
 _en_hi_lock = threading.Lock()
@@ -168,50 +178,50 @@ ENGLISH_PLACE_CORRECTIONS = {
 
 
 # ============================================================
-# COMMON HINDI -> ENGLISH PHRASES
+# SAFE COMMON FALLBACK
+# ============================================================
+#
+# IMPORTANT:
+# These are NOT the main translator.
+#
+# They are only used if the ML model cannot be loaded.
+#
 # ============================================================
 
-COMMON_HINDI_PHRASES = {
+COMMON_HINDI_FALLBACKS = {
     "नमस्ते": "Hello.",
-    "हेलो": "Hello.",
     "धन्यवाद": "Thank you.",
     "शुक्रिया": "Thank you.",
-    "मुझे दिल्ली जाना है": "I want to go to Delhi.",
-    "मैं दिल्ली जाना चाहता हूँ": "I want to go to Delhi.",
-    "मैं दिल्ली जाना चाहती हूँ": "I want to go to Delhi.",
-    "मैं दिल्ली जा रहा हूँ": "I am going to Delhi.",
-    "मैं दिल्ली जा रहा हूं": "I am going to Delhi.",
-    "मैं दिल्ली जा रही हूँ": "I am going to Delhi.",
-    "मैं दिल्ली जा रही हूं": "I am going to Delhi.",
-    "मैं दिल्ली घूमने जा रहा हूँ": "I am going to Delhi for sightseeing.",
-    "मैं दिल्ली घूमने जा रहा हूं": "I am going to Delhi for sightseeing.",
-    "मैं दिल्ली घूमने जा रही हूँ": "I am going to Delhi for sightseeing.",
-    "मैं दिल्ली घूमने जा रही हूं": "I am going to Delhi for sightseeing.",
-    "आज मैं दिल्ली जा रहा हूँ": "Today I am going to Delhi.",
-    "आज मैं दिल्ली जा रहा हूं": "Today I am going to Delhi.",
-    "आज मैं दिल्ली जा रही हूँ": "Today I am going to Delhi.",
-    "आज मैं दिल्ली जा रही हूं": "Today I am going to Delhi.",
+
+    "मैं दिल्ली जा रहा हूँ":
+        "I am going to Delhi.",
+
+    "मैं दिल्ली जा रहा हूं":
+        "I am going to Delhi.",
+
+    "मैं दिल्ली जा रही हूँ":
+        "I am going to Delhi.",
+
+    "मैं दिल्ली जा रही हूं":
+        "I am going to Delhi.",
 }
 
 
-# ============================================================
-# SIMPLE ENGLISH -> HINDI PHRASES
-# ============================================================
-
-COMMON_ENGLISH_PHRASES = {
+COMMON_ENGLISH_FALLBACKS = {
     "hello": "नमस्ते।",
     "hi": "नमस्ते।",
     "thank you": "धन्यवाद।",
-    "thanks": "धन्यवाद।",
-    "i want to go to delhi": "मैं दिल्ली जाना चाहता हूँ।",
-    "i am going to delhi": "मैं दिल्ली जा रहा हूँ।",
-    "i am going to delhi for sightseeing":
-        "मैं दिल्ली घूमने जा रहा हूँ।",
+
+    "i am going to delhi":
+        "मैं दिल्ली जा रहा हूँ।",
+
+    "i want to go to delhi":
+        "मैं दिल्ली जाना चाहता हूँ।",
 }
 
 
 # ============================================================
-# NORMALIZATION
+# NORMALIZE TEXT
 # ============================================================
 
 def normalize_text(text):
@@ -220,21 +230,13 @@ def normalize_text(text):
 
     text = str(text).strip()
 
-    # Normalize common Unicode punctuation.
-    replacements = {
-        "।": "",
-        "?": "",
-        "!": "",
-        "،": ",",
-    }
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    )
 
-    for old, new in replacements.items():
-        text = text.replace(old, new)
-
-    # Collapse multiple spaces.
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip()
+    return text
 
 
 # ============================================================
@@ -242,6 +244,7 @@ def normalize_text(text):
 # ============================================================
 
 def correct_english_place_names(text):
+
     if not text:
         return text
 
@@ -252,6 +255,7 @@ def correct_english_place_names(text):
     )
 
     for wrong, correct in corrections:
+
         text = re.sub(
             re.escape(wrong),
             correct,
@@ -263,10 +267,11 @@ def correct_english_place_names(text):
 
 
 # ============================================================
-# REPLACE HINDI PLACE NAMES
+# HINDI PLACE REPLACEMENT
 # ============================================================
 
 def replace_hindi_place_names(text):
+
     if not text:
         return text
 
@@ -279,6 +284,7 @@ def replace_hindi_place_names(text):
     )
 
     for hindi_place, english_place in places:
+
         result = result.replace(
             hindi_place,
             english_place,
@@ -288,284 +294,16 @@ def replace_hindi_place_names(text):
 
 
 # ============================================================
-# LIGHTWEIGHT HINDI SENTENCE TRANSLATION
-# ============================================================
-
-def translate_known_hindi_sentence(text):
-    """
-    Translate common travel sentences without Transformers/PyTorch.
-
-    This is the important Render-safe layer.
-    """
-
-    if not text:
-        return None
-
-    original = str(text).strip()
-    normalized = normalize_text(original)
-
-    if not normalized:
-        return None
-
-    # --------------------------------------------------------
-    # Exact common phrases
-    # --------------------------------------------------------
-
-    for hindi, english in COMMON_HINDI_PHRASES.items():
-        if normalize_text(hindi) == normalized:
-            return english
-
-    # --------------------------------------------------------
-    # Pattern-based place handling
-    # --------------------------------------------------------
-
-    for hindi_place, english_place in sorted(
-        HINDI_PLACE_NAMES.items(),
-        key=lambda item: len(item[0]),
-        reverse=True,
-    ):
-
-        place = re.escape(hindi_place)
-
-        # ----------------------------------------------------
-        # मैं <PLACE> देखने जा रहा हूँ
-        # ----------------------------------------------------
-
-        patterns_male_present = [
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रहा\s+हूं$",
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रहा\s+हूँ$",
-        ]
-
-        for pattern in patterns_male_present:
-            if re.match(pattern, normalized):
-                return f"I am going to see {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> देखने जा रही हूँ
-        # ----------------------------------------------------
-
-        patterns_female_present = [
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रही\s+हूं$",
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रही\s+हूँ$",
-        ]
-
-        for pattern in patterns_female_present:
-            if re.match(pattern, normalized):
-                return f"I am going to see {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> जा रहा हूँ
-        # ----------------------------------------------------
-
-        patterns_male_going = [
-            rf"^मैं\s+{place}\s+जा\s+रहा\s+हूं$",
-            rf"^मैं\s+{place}\s+जा\s+रहा\s+हूँ$",
-        ]
-
-        for pattern in patterns_male_going:
-            if re.match(pattern, normalized):
-                return f"I am going to {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> जा रही हूँ
-        # ----------------------------------------------------
-
-        patterns_female_going = [
-            rf"^मैं\s+{place}\s+जा\s+रही\s+हूं$",
-            rf"^मैं\s+{place}\s+जा\s+रही\s+हूँ$",
-        ]
-
-        for pattern in patterns_female_going:
-            if re.match(pattern, normalized):
-                return f"I am going to {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> जाना चाहता हूँ
-        # ----------------------------------------------------
-
-        patterns_want_male = [
-            rf"^मैं\s+{place}\s+जाना\s+चाहता\s+हूं$",
-            rf"^मैं\s+{place}\s+जाना\s+चाहता\s+हूँ$",
-        ]
-
-        for pattern in patterns_want_male:
-            if re.match(pattern, normalized):
-                return f"I want to go to {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> जाना चाहती हूँ
-        # ----------------------------------------------------
-
-        patterns_want_female = [
-            rf"^मैं\s+{place}\s+जाना\s+चाहती\s+हूं$",
-            rf"^मैं\s+{place}\s+जाना\s+चाहती\s+हूँ$",
-        ]
-
-        for pattern in patterns_want_female:
-            if re.match(pattern, normalized):
-                return f"I want to go to {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> घूमने जा रहा हूँ
-        # ----------------------------------------------------
-
-        patterns_sightseeing_male = [
-            rf"^मैं\s+{place}\s+घूमने\s+जा\s+रहा\s+हूं$",
-            rf"^मैं\s+{place}\s+घूमने\s+जा\s+रहा\s+हूँ$",
-        ]
-
-        for pattern in patterns_sightseeing_male:
-            if re.match(pattern, normalized):
-                return (
-                    f"I am going to {english_place} "
-                    f"for sightseeing."
-                )
-
-        # ----------------------------------------------------
-        # मैं <PLACE> घूमने जा रही हूँ
-        # ----------------------------------------------------
-
-        patterns_sightseeing_female = [
-            rf"^मैं\s+{place}\s+घूमने\s+जा\s+रही\s+हूं$",
-            rf"^मैं\s+{place}\s+घूमने\s+जा\s+रही\s+हूँ$",
-        ]
-
-        for pattern in patterns_sightseeing_female:
-            if re.match(pattern, normalized):
-                return (
-                    f"I am going to {english_place} "
-                    f"for sightseeing."
-                )
-
-        # ----------------------------------------------------
-        # आज मैं <PLACE> जा रहा हूँ
-        # ----------------------------------------------------
-
-        patterns_today_male = [
-            rf"^आज\s+मैं\s+{place}\s+जा\s+रहा\s+हूं$",
-            rf"^आज\s+मैं\s+{place}\s+जा\s+रहा\s+हूँ$",
-        ]
-
-        for pattern in patterns_today_male:
-            if re.match(pattern, normalized):
-                return f"Today I am going to {english_place}."
-
-        # ----------------------------------------------------
-        # आज मैं <PLACE> जा रही हूँ
-        # ----------------------------------------------------
-
-        patterns_today_female = [
-            rf"^आज\s+मैं\s+{place}\s+जा\s+रही\s+हूं$",
-            rf"^आज\s+मैं\s+{place}\s+जा\s+रही\s+हूँ$",
-        ]
-
-        for pattern in patterns_today_female:
-            if re.match(pattern, normalized):
-                return f"Today I am going to {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> देखने जाऊंगा
-        # ----------------------------------------------------
-
-        patterns_future_male = [
-            rf"^मैं\s+{place}\s+देखने\s+जाऊंगा$",
-            rf"^मैं\s+{place}\s+देखने\s+जाऊँगा$",
-        ]
-
-        for pattern in patterns_future_male:
-            if re.match(pattern, normalized):
-                return f"I will go to see {english_place}."
-
-        # ----------------------------------------------------
-        # मैं <PLACE> देखने जाऊंगी
-        # ----------------------------------------------------
-
-        patterns_future_female = [
-            rf"^मैं\s+{place}\s+देखने\s+जाऊंगी$",
-            rf"^मैं\s+{place}\s+देखने\s+जाऊँगी$",
-        ]
-
-        for pattern in patterns_future_female:
-            if re.match(pattern, normalized):
-                return f"I will go to see {english_place}."
-
-        # ----------------------------------------------------
-        # आज मैं <PLACE> देखने जाऊंगा
-        # ----------------------------------------------------
-
-        patterns_today_future_male = [
-            rf"^आज\s+मैं\s+{place}\s+देखने\s+जाऊंगा$",
-            rf"^आज\s+मैं\s+{place}\s+देखने\s+जाऊँगा$",
-        ]
-
-        for pattern in patterns_today_future_male:
-            if re.match(pattern, normalized):
-                return (
-                    f"Today I will go to see "
-                    f"{english_place}."
-                )
-
-        # ----------------------------------------------------
-        # आज मैं <PLACE> देखने जाऊंगी
-        # ----------------------------------------------------
-
-        patterns_today_future_female = [
-            rf"^आज\s+मैं\s+{place}\s+देखने\s+जाऊंगी$",
-            rf"^आज\s+मैं\s+{place}\s+देखने\s+जाऊँगी$",
-        ]
-
-        for pattern in patterns_today_future_female:
-            if re.match(pattern, normalized):
-                return (
-                    f"Today I will go to see "
-                    f"{english_place}."
-                )
-
-        # ----------------------------------------------------
-        # मैं <PLACE> देखने जा रहा हूं कल
-        # ----------------------------------------------------
-
-        patterns_tomorrow_male = [
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रहा\s+हूं\s+कल$",
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रहा\s+हूँ\s+कल$",
-        ]
-
-        for pattern in patterns_tomorrow_male:
-            if re.match(pattern, normalized):
-                return (
-                    f"I am going to see "
-                    f"{english_place} tomorrow."
-                )
-
-        # ----------------------------------------------------
-        # मैं <PLACE> देखने जा रही हूं कल
-        # ----------------------------------------------------
-
-        patterns_tomorrow_female = [
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रही\s+हूं\s+कल$",
-            rf"^मैं\s+{place}\s+देखने\s+जा\s+रही\s+हूँ\s+कल$",
-        ]
-
-        for pattern in patterns_tomorrow_female:
-            if re.match(pattern, normalized):
-                return (
-                    f"I am going to see "
-                    f"{english_place} tomorrow."
-                )
-
-    return None
-
-
-# ============================================================
 # GET HINDI -> ENGLISH MODEL
 # ============================================================
 
 def _get_hi_en():
+
     global _hi_en_tokenizer
     global _hi_en_model
     global _hi_en_loading
+    global _hi_en_failed
 
-    # Already loaded
     if (
         _hi_en_tokenizer is not None
         and _hi_en_model is not None
@@ -575,13 +313,26 @@ def _get_hi_en():
             _hi_en_model,
         )
 
-    # Disabled
     if not NATIVE_TRANSLATION_MODEL_ENABLED:
+
+        print(
+            "[NativeLanguage] "
+            "Hindi->English model disabled."
+        )
+
+        return None, None
+
+    if _hi_en_failed:
+
+        print(
+            "[NativeLanguage] "
+            "Hindi->English model previously failed."
+        )
+
         return None, None
 
     with _hi_en_lock:
 
-        # Re-check
         if (
             _hi_en_tokenizer is not None
             and _hi_en_model is not None
@@ -597,22 +348,33 @@ def _get_hi_en():
         _hi_en_loading = True
 
         try:
+
+            print(
+                "[NativeLanguage] "
+                "Loading Hindi -> English model:"
+            )
+
+            print(
+                HI_EN_MODEL
+            )
+
             from transformers import (
                 AutoTokenizer,
                 AutoModelForSeq2SeqLM,
             )
 
-            print(
-                "[NativeLanguage] "
-                "Loading Hindi -> English model..."
+            tokenizer = (
+                AutoTokenizer.from_pretrained(
+                    HI_EN_MODEL,
+                    local_files_only=False,
+                )
             )
 
-            tokenizer = AutoTokenizer.from_pretrained(
-                HI_EN_MODEL
-            )
-
-            model = AutoModelForSeq2SeqLM.from_pretrained(
-                HI_EN_MODEL
+            model = (
+                AutoModelForSeq2SeqLM.from_pretrained(
+                    HI_EN_MODEL,
+                    local_files_only=False,
+                )
             )
 
             model.eval()
@@ -622,7 +384,7 @@ def _get_hi_en():
 
             print(
                 "[NativeLanguage] "
-                "Hindi -> English model loaded."
+                "Hindi -> English MODEL LOADED."
             )
 
             return (
@@ -632,15 +394,21 @@ def _get_hi_en():
 
         except Exception as error:
 
+            _hi_en_failed = True
+
             print(
                 "[NativeLanguage] "
-                "Hindi -> English model load error:",
-                repr(error),
+                "Hindi -> English MODEL LOAD ERROR:"
+            )
+
+            print(
+                repr(error)
             )
 
             return None, None
 
         finally:
+
             _hi_en_loading = False
 
 
@@ -649,11 +417,12 @@ def _get_hi_en():
 # ============================================================
 
 def _get_en_hi():
+
     global _en_hi_tokenizer
     global _en_hi_model
     global _en_hi_loading
+    global _en_hi_failed
 
-    # Already loaded
     if (
         _en_hi_tokenizer is not None
         and _en_hi_model is not None
@@ -663,13 +432,26 @@ def _get_en_hi():
             _en_hi_model,
         )
 
-    # Disabled
     if not NATIVE_TRANSLATION_MODEL_ENABLED:
+
+        print(
+            "[NativeLanguage] "
+            "English->Hindi model disabled."
+        )
+
+        return None, None
+
+    if _en_hi_failed:
+
+        print(
+            "[NativeLanguage] "
+            "English->Hindi model previously failed."
+        )
+
         return None, None
 
     with _en_hi_lock:
 
-        # Re-check
         if (
             _en_hi_tokenizer is not None
             and _en_hi_model is not None
@@ -685,22 +467,33 @@ def _get_en_hi():
         _en_hi_loading = True
 
         try:
+
+            print(
+                "[NativeLanguage] "
+                "Loading English -> Hindi model:"
+            )
+
+            print(
+                EN_HI_MODEL
+            )
+
             from transformers import (
                 AutoTokenizer,
                 AutoModelForSeq2SeqLM,
             )
 
-            print(
-                "[NativeLanguage] "
-                "Loading English -> Hindi model..."
+            tokenizer = (
+                AutoTokenizer.from_pretrained(
+                    EN_HI_MODEL,
+                    local_files_only=False,
+                )
             )
 
-            tokenizer = AutoTokenizer.from_pretrained(
-                EN_HI_MODEL
-            )
-
-            model = AutoModelForSeq2SeqLM.from_pretrained(
-                EN_HI_MODEL
+            model = (
+                AutoModelForSeq2SeqLM.from_pretrained(
+                    EN_HI_MODEL,
+                    local_files_only=False,
+                )
             )
 
             model.eval()
@@ -710,7 +503,7 @@ def _get_en_hi():
 
             print(
                 "[NativeLanguage] "
-                "English -> Hindi model loaded."
+                "English -> Hindi MODEL LOADED."
             )
 
             return (
@@ -720,168 +513,48 @@ def _get_en_hi():
 
         except Exception as error:
 
+            _en_hi_failed = True
+
             print(
                 "[NativeLanguage] "
-                "English -> Hindi model load error:",
-                repr(error),
+                "English -> Hindi MODEL LOAD ERROR:"
+            )
+
+            print(
+                repr(error)
             )
 
             return None, None
 
         finally:
+
             _en_hi_loading = False
 
 
 # ============================================================
-# HINDI -> ENGLISH
+# ML TRANSLATION: HINDI -> ENGLISH
 # ============================================================
 
-def translate_hindi_to_english(text):
-
-    if not text or not str(text).strip():
-        return ""
-
-    text = str(text).strip()
-
-    # --------------------------------------------------------
-    # 1. Lightweight translation first
-    # --------------------------------------------------------
-
-    known_translation = (
-        translate_known_hindi_sentence(text)
-    )
-
-    if known_translation:
-        return known_translation
-
-    # --------------------------------------------------------
-    # 2. Try original Hugging Face model only if enabled
-    # --------------------------------------------------------
+def _model_translate_hindi_to_english(text):
 
     tokenizer, model = _get_hi_en()
 
     if tokenizer is None or model is None:
 
-        print(
-            "[NativeLanguage] "
-            "Hindi -> English model disabled/unavailable."
-        )
-
-        # ----------------------------------------------------
-        # Lightweight place replacement as last safe fallback
-        # ----------------------------------------------------
-
-        replaced = replace_hindi_place_names(text)
-
-        if replaced != text:
-            return replaced
-
-        return text
-
-    # --------------------------------------------------------
-    # 3. Model inference
-    # --------------------------------------------------------
-
-    translated_input = replace_hindi_place_names(
-        text
-    )
+        return None
 
     try:
-
-        inputs = tokenizer(
-            translated_input,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=128,
-        )
 
         import torch
 
-        with torch.no_grad():
-
-            output = model.generate(
-                **inputs,
-                max_length=128,
-                num_beams=8,
-                do_sample=False,
-                early_stopping=True,
-            )
-
-        translated = tokenizer.decode(
-            output[0],
-            skip_special_tokens=True,
-        )
-
-        translated = correct_english_place_names(
-            translated
-        )
-
-        return translated.strip()
-
-    except Exception as error:
-
         print(
             "[NativeLanguage] "
-            "Hindi -> English inference error:",
-            repr(error),
+            "Running REAL Hindi -> English model..."
         )
 
-        # Never break the Django request.
-        replaced = replace_hindi_place_names(text)
-
-        if replaced != text:
-            return replaced
-
-        return text
-
-
-# ============================================================
-# ENGLISH -> HINDI
-# ============================================================
-
-def translate_english_to_hindi(text):
-
-    if not text or not str(text).strip():
-        return ""
-
-    text = str(text).strip()
-
-    normalized = normalize_text(
-        text
-    ).lower()
-
-    # --------------------------------------------------------
-    # 1. Lightweight known phrases
-    # --------------------------------------------------------
-
-    if normalized in COMMON_ENGLISH_PHRASES:
-        return COMMON_ENGLISH_PHRASES[
-            normalized
-        ]
-
-    # --------------------------------------------------------
-    # 2. Model if explicitly enabled
-    # --------------------------------------------------------
-
-    tokenizer, model = _get_en_hi()
-
-    if tokenizer is None or model is None:
-
-        # English already received.
-        # Keep it intact rather than breaking the API.
-        print(
-            "[NativeLanguage] "
-            "English -> Hindi model disabled/unavailable."
-        )
-
-        return text
-
-    # --------------------------------------------------------
-    # 3. Model inference
-    # --------------------------------------------------------
-
-    try:
+        # IMPORTANT:
+        # Do NOT replace Hindi place names before model inference.
+        # Give the actual Hindi sentence to the model.
 
         inputs = tokenizer(
             text,
@@ -891,38 +564,254 @@ def translate_english_to_hindi(text):
             max_length=128,
         )
 
-        import torch
-
         with torch.no_grad():
 
-            output = model.generate(
+            generated = model.generate(
                 **inputs,
                 max_length=128,
-                num_beams=8,
+                num_beams=5,
                 do_sample=False,
-                early_stopping=True,
             )
 
         translated = tokenizer.decode(
-            output[0],
+            generated[0],
             skip_special_tokens=True,
         )
 
-        return translated.strip()
+        translated = correct_english_place_names(
+            translated
+        )
+
+        translated = translated.strip()
+
+        if not translated:
+
+            return None
+
+        print(
+            "[NativeLanguage] "
+            "MODEL OUTPUT:",
+            translated
+        )
+
+        return translated
 
     except Exception as error:
 
         print(
             "[NativeLanguage] "
-            "English -> Hindi inference error:",
-            repr(error),
+            "Hindi -> English MODEL INFERENCE ERROR:"
         )
 
-        return text
+        print(
+            repr(error)
+        )
+
+        return None
 
 
 # ============================================================
-# AUTO TRANSLATOR
+# ML TRANSLATION: ENGLISH -> HINDI
+# ============================================================
+
+def _model_translate_english_to_hindi(text):
+
+    tokenizer, model = _get_en_hi()
+
+    if tokenizer is None or model is None:
+
+        return None
+
+    try:
+
+        import torch
+
+        print(
+            "[NativeLanguage] "
+            "Running REAL English -> Hindi model..."
+        )
+
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=128,
+        )
+
+        with torch.no_grad():
+
+            generated = model.generate(
+                **inputs,
+                max_length=128,
+                num_beams=5,
+                do_sample=False,
+            )
+
+        translated = tokenizer.decode(
+            generated[0],
+            skip_special_tokens=True,
+        )
+
+        translated = translated.strip()
+
+        if not translated:
+
+            return None
+
+        print(
+            "[NativeLanguage] "
+            "MODEL OUTPUT:",
+            translated
+        )
+
+        return translated
+
+    except Exception as error:
+
+        print(
+            "[NativeLanguage] "
+            "English -> Hindi MODEL INFERENCE ERROR:"
+        )
+
+        print(
+            repr(error)
+        )
+
+        return None
+
+
+# ============================================================
+# HINDI -> ENGLISH PUBLIC FUNCTION
+# ============================================================
+
+def translate_hindi_to_english(text):
+
+    if not text or not str(text).strip():
+
+        return ""
+
+    text = normalize_text(
+        text
+    )
+
+    print(
+        "[NativeLanguage] "
+        "Hindi -> English request:",
+        text
+    )
+
+    # ========================================================
+    # FIRST: REAL MODEL
+    # ========================================================
+
+    model_translation = (
+        _model_translate_hindi_to_english(
+            text
+        )
+    )
+
+    if model_translation:
+
+        return model_translation
+
+    # ========================================================
+    # SECOND: SAFE FALLBACK
+    # ========================================================
+
+    normalized = normalize_text(
+        text
+    )
+
+    if normalized in COMMON_HINDI_FALLBACKS:
+
+        print(
+            "[NativeLanguage] "
+            "Using fallback because ML model failed."
+        )
+
+        return COMMON_HINDI_FALLBACKS[
+            normalized
+        ]
+
+    # ========================================================
+    # PLACE-NAME FALLBACK
+    # ========================================================
+
+    replaced = replace_hindi_place_names(
+        text
+    )
+
+    if replaced != text:
+
+        return replaced
+
+    # ========================================================
+    # LAST RESORT
+    # ========================================================
+
+    return text
+
+
+# ============================================================
+# ENGLISH -> HINDI PUBLIC FUNCTION
+# ============================================================
+
+def translate_english_to_hindi(text):
+
+    if not text or not str(text).strip():
+
+        return ""
+
+    text = normalize_text(
+        text
+    )
+
+    print(
+        "[NativeLanguage] "
+        "English -> Hindi request:",
+        text
+    )
+
+    # ========================================================
+    # FIRST: REAL MODEL
+    # ========================================================
+
+    model_translation = (
+        _model_translate_english_to_hindi(
+            text
+        )
+    )
+
+    if model_translation:
+
+        return model_translation
+
+    # ========================================================
+    # SECOND: SAFE FALLBACK
+    # ========================================================
+
+    normalized = (
+        normalize_text(text)
+        .lower()
+    )
+
+    if normalized in COMMON_ENGLISH_FALLBACKS:
+
+        print(
+            "[NativeLanguage] "
+            "Using fallback because ML model failed."
+        )
+
+        return COMMON_ENGLISH_FALLBACKS[
+            normalized
+        ]
+
+    return text
+
+
+# ============================================================
+# AUTO TRANSLATION
 # ============================================================
 
 def auto_translate(
@@ -931,16 +820,17 @@ def auto_translate(
 ):
 
     if not text or not str(text).strip():
+
         return ""
 
-    text = str(text).strip()
-
     if detected_language == "Hindi":
+
         return translate_hindi_to_english(
             text
         )
 
     if detected_language == "English":
+
         return translate_english_to_hindi(
             text
         )
