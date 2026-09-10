@@ -1663,114 +1663,271 @@ def _nearest_bus_stop(
 # NEARBY API
 # ============================================================
 
+# ============================================================
+# OVERPASS REQUEST
+# ============================================================
+
+def _overpass_request(query, timeout=12):
+    """
+    Fast and reliable Overpass request.
+    Tries multiple servers.
+    Returns dict on success, None on failure.
+    """
+
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+
+    for server in OVERPASS_SERVERS:
+
+        try:
+
+            response = requests.post(
+                server,
+                data={
+                    "data": query
+                },
+                headers=headers,
+                timeout=timeout
+            )
+
+            print(
+                f"[Nearby] {server} -> HTTP {response.status_code}"
+            )
+
+            if response.status_code != 200:
+                continue
+
+            try:
+                data = response.json()
+            except ValueError:
+                print(
+                    f"[Nearby] Invalid JSON from {server}"
+                )
+                continue
+
+            if isinstance(data, dict):
+                return data
+
+        except requests.RequestException as error:
+
+            print(
+                f"[Nearby] Overpass failed "
+                f"{server}: {error}"
+            )
+
+        except Exception as error:
+
+            print(
+                f"[Nearby] Unexpected Overpass error: "
+                f"{error}"
+            )
+
+    return None
+
+
+# ============================================================
+# NEARBY PLACES
+# ============================================================
+
 def nearby_places(request):
 
     if request.method != "GET":
-
         return JsonResponse(
             {
                 "success": False,
                 "results": [],
-                "error": (
-                    "GET request required"
-                ),
+                "count": 0,
+                "error": "GET request required"
             },
-            status=405,
+            status=405
         )
+
+    # --------------------------------------------------------
+    # COORDINATES
+    # --------------------------------------------------------
 
     try:
 
         lat = float(
-            request.GET.get(
-                "lat"
-            )
+            request.GET.get("lat")
         )
 
         lon = float(
-            request.GET.get(
-                "lon"
-            )
+            request.GET.get("lon")
         )
 
     except (
         TypeError,
-        ValueError,
+        ValueError
     ):
 
         return JsonResponse(
             {
                 "success": False,
                 "results": [],
-                "error": (
-                    "Valid latitude and longitude required."
-                ),
+                "count": 0,
+                "error":
+                    "Valid latitude and longitude required"
             },
-            status=400,
+            status=400
         )
 
     if not (
         -90 <= lat <= 90
-        and -180 <= lon <= 180
+        and
+        -180 <= lon <= 180
     ):
 
         return JsonResponse(
             {
                 "success": False,
                 "results": [],
-                "error": (
-                    "Invalid geographic coordinates."
-                ),
+                "count": 0,
+                "error": "Invalid coordinates"
             },
-            status=400,
+            status=400
         )
 
+    # --------------------------------------------------------
+    # CATEGORY
+    # --------------------------------------------------------
+
     category = (
-        request.GET.get(
-            "type"
-        )
-        or request.GET.get(
-            "category"
-        )
+        request.GET.get("type")
+        or request.GET.get("category")
         or "tourist"
     ).lower().strip()
 
-    if category not in NEARBY_QUERIES:
-
-        return JsonResponse(
-            {
-                "success": False,
-                "results": [],
-                "error": (
-                    "Unsupported nearby category."
-                ),
-            },
-            status=400,
-        )
+    # --------------------------------------------------------
+    # RANGE
+    #
+    # 25 km max.
+    # --------------------------------------------------------
 
     try:
 
         radius = int(
             request.GET.get(
                 "radius",
-                "25000",
+                25000
             )
         )
 
     except (
         TypeError,
-        ValueError,
+        ValueError
     ):
 
         radius = 25000
 
-    # 1 km -> 25 km
     radius = max(
         1000,
         min(
             radius,
-            25000,
-        ),
+            25000
+        )
     )
+
+    # --------------------------------------------------------
+    # OSM TAGS
+    # --------------------------------------------------------
+
+    queries = {
+
+        "metro": [
+            'nwr["railway"="station"]["station"="subway"]',
+            'nwr["railway"="subway_entrance"]',
+            'nwr["public_transport"="station"]["subway"="yes"]',
+        ],
+
+        "train": [
+            'nwr["railway"="station"]',
+            'nwr["railway"="halt"]',
+        ],
+
+        "food": [
+            'nwr["amenity"="restaurant"]',
+            'nwr["amenity"="cafe"]',
+            'nwr["amenity"="fast_food"]',
+            'nwr["amenity"="food_court"]',
+        ],
+
+        "hotel": [
+            'nwr["tourism"="hotel"]',
+            'nwr["tourism"="hostel"]',
+            'nwr["tourism"="guest_house"]',
+            'nwr["tourism"="motel"]',
+        ],
+
+        "hospital": [
+            'nwr["amenity"="hospital"]',
+            'nwr["healthcare"="hospital"]',
+        ],
+
+        "pharmacy": [
+            'nwr["amenity"="pharmacy"]',
+            'nwr["healthcare"="pharmacy"]',
+        ],
+
+        "atm": [
+            'nwr["amenity"="atm"]',
+        ],
+
+        "tourist": [
+            'nwr["tourism"="attraction"]',
+            'nwr["tourism"="museum"]',
+            'nwr["tourism"="gallery"]',
+            'nwr["tourism"="viewpoint"]',
+            'nwr["tourism"="zoo"]',
+            'nwr["tourism"="theme_park"]',
+            'nwr["historic"]',
+            'nwr["leisure"="park"]',
+        ],
+    }
+
+    if category not in queries:
+
+        return JsonResponse(
+            {
+                "success": False,
+                "results": [],
+                "count": 0,
+                "error":
+                    f"Unsupported nearby category: {category}"
+            },
+            status=400
+        )
+
+    # --------------------------------------------------------
+    # BUILD CORRECT LOCAL QUERY
+    #
+    # IMPORTANT:
+    # around() is applied to EVERY OSM query.
+    # --------------------------------------------------------
+
+    osm_parts = []
+
+    for tag_query in queries[category]:
+
+        osm_parts.append(
+            f"""
+            {tag_query}
+            (around:{radius},{lat},{lon});
+            """
+        )
+
+    query = f"""
+    [out:json][timeout:12];
+
+    (
+        {"".join(osm_parts)}
+    );
+
+    out center tags;
+    """
 
     print(
         f"[Nearby] Searching {category} "
@@ -1778,224 +1935,410 @@ def nearby_places(request):
         f"within {radius}m"
     )
 
+    # --------------------------------------------------------
+    # DATASET FIRST
+    # --------------------------------------------------------
+
     results = []
     seen = set()
 
-    # ========================================================
-    # 1. OWN GOPLAN DATASET
-    # ========================================================
-
     if category == "tourist":
 
-        for place in _load_dataset_places():
+        try:
 
-            distance = (
-                _distance_km(
-                    lat,
-                    lon,
-                    place["latitude"],
-                    place["longitude"],
+            for place in _load_dataset_places():
+
+                distance_m = (
+                    _distance_km(
+                        lat,
+                        lon,
+                        place["latitude"],
+                        place["longitude"]
+                    )
+                    * 1000
                 )
-                * 1000
+
+                if distance_m <= radius:
+
+                    key = (
+                        round(
+                            place["latitude"],
+                            5
+                        ),
+                        round(
+                            place["longitude"],
+                            5
+                        )
+                    )
+
+                    if key in seen:
+                        continue
+
+                    seen.add(key)
+
+                    results.append({
+                        **place,
+                        "distance_m":
+                            round(distance_m)
+                    })
+
+        except Exception as error:
+
+            print(
+                "[Nearby] Dataset error:",
+                error
             )
 
-            if distance > radius:
-                continue
-
-            key = (
-                round(
-                    place["latitude"],
-                    5,
-                ),
-                round(
-                    place["longitude"],
-                    5,
-                ),
-            )
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-
-            results.append(
-                {
-                    **place,
-                    "distance_m": round(
-                        distance
-                    ),
-                }
-            )
-
-    # ========================================================
-    # 2. METRO DATASET FIRST
-    # ========================================================
-
-    if category == "metro":
-
-        metro_results = (
-            _nearby_metro_from_dataset(
-                lat,
-                lon,
-                radius,
-            )
-        )
-
-        for item in metro_results:
-
-            key = (
-                round(
-                    item["latitude"],
-                    5,
-                ),
-                round(
-                    item["longitude"],
-                    5,
-                ),
-            )
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-            results.append(item)
-
-    # ========================================================
-    # 3. OVERPASS
-    # ========================================================
-
-    query = _build_nearby_query(
-        category,
-        radius,
-        lat,
-        lon,
-    )
+    # --------------------------------------------------------
+    # OSM / OVERPASS
+    # --------------------------------------------------------
 
     data = _overpass_request(
         query,
-        timeout=14,
+        timeout=12
     )
 
-    if data:
+    # --------------------------------------------------------
+    # OVERPASS FAILED
+    #
+    # IMPORTANT:
+    # ALWAYS RETURN JSON.
+    # Never allow Django to return an HTML 500 page.
+    # --------------------------------------------------------
 
-        processed = (
-            _process_nearby_elements(
-                data.get(
-                    "elements",
-                    []
-                ),
-                category,
+    if data is None:
+
+        return JsonResponse(
+            {
+                "success": True,
+                "results": results[:40],
+                "count": len(results[:40]),
+                "radius_km":
+                    round(
+                        radius / 1000,
+                        1
+                    ),
+                "category":
+                    category,
+                "center": {
+                    "lat": lat,
+                    "lon": lon
+                },
+                "source":
+                    "GoPlan dataset",
+                "warning":
+                    "OpenStreetMap service is temporarily unavailable."
+            },
+            status=200
+        )
+
+    # --------------------------------------------------------
+    # PROCESS OSM RESULTS
+    # --------------------------------------------------------
+
+    for element in data.get(
+        "elements",
+        []
+    ):
+
+        tags = (
+            element.get(
+                "tags",
+                {}
+            )
+            or {}
+        )
+
+        name = (
+            tags.get("name")
+            or
+            tags.get("official_name")
+            or
+            tags.get("brand")
+        )
+
+        if not name:
+            continue
+
+        center = (
+            element.get(
+                "center",
+                {}
+            )
+            or {}
+        )
+
+        item_lat = (
+            element.get("lat")
+            if element.get("lat") is not None
+            else center.get("lat")
+        )
+
+        item_lon = (
+            element.get("lon")
+            if element.get("lon") is not None
+            else center.get("lon")
+        )
+
+        try:
+
+            item_lat = float(
+                item_lat
+            )
+
+            item_lon = float(
+                item_lon
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            continue
+
+        distance_m = (
+            _distance_km(
                 lat,
                 lon,
-                radius,
+                item_lat,
+                item_lon
+            )
+            * 1000
+        )
+
+        if distance_m > radius:
+            continue
+
+        key = (
+            round(
+                item_lat,
+                5
+            ),
+            round(
+                item_lon,
+                5
             )
         )
 
-        for item in processed:
+        if key in seen:
+            continue
 
-            key = (
-                round(
-                    item["latitude"],
-                    5,
-                ),
-                round(
-                    item["longitude"],
-                    5,
-                ),
+        seen.add(key)
+
+        if category == "metro":
+
+            display_category = (
+                "Metro station"
             )
 
-            if key in seen:
-                continue
+        elif category == "train":
 
-            seen.add(key)
-            results.append(item)
-
-    # ========================================================
-    # 4. PHOTON FALLBACK
-    # ========================================================
-
-    # Photon is particularly useful when Overpass is down.
-    if len(results) < 5:
-
-        photon = _photon_search(
-            category,
-            lat,
-            lon,
-            radius,
-        )
-
-        for item in photon:
-
-            key = (
-                round(
-                    item["latitude"],
-                    5,
-                ),
-                round(
-                    item["longitude"],
-                    5,
-                ),
+            display_category = (
+                "Railway station"
             )
 
-            if key in seen:
-                continue
+        elif category == "food":
 
-            seen.add(key)
-            results.append(item)
+            display_category = (
+                tags.get(
+                    "amenity"
+                )
+                or
+                "Food"
+            )
 
-    # ========================================================
-    # 5. FINAL SORT
-    # ========================================================
+        elif category == "hotel":
+
+            display_category = (
+                tags.get(
+                    "tourism"
+                )
+                or
+                "Hotel"
+            )
+
+        elif category == "hospital":
+
+            display_category = (
+                tags.get(
+                    "healthcare"
+                )
+                or
+                "Hospital"
+            )
+
+        elif category == "pharmacy":
+
+            display_category = (
+                tags.get(
+                    "healthcare"
+                )
+                or
+                "Pharmacy"
+            )
+
+        elif category == "atm":
+
+            display_category = "ATM"
+
+        else:
+
+            display_category = (
+                tags.get(
+                    "tourism"
+                )
+                or
+                tags.get(
+                    "historic"
+                )
+                or
+                tags.get(
+                    "leisure"
+                )
+                or
+                "Tourist place"
+            )
+
+        results.append({
+
+            "name":
+                str(name),
+
+            "latitude":
+                item_lat,
+
+            "longitude":
+                item_lon,
+
+            "lat":
+                item_lat,
+
+            "lon":
+                item_lon,
+
+            "distance_m":
+                round(distance_m),
+
+            "distance":
+                round(
+                    distance_m / 1000,
+                    2
+                ),
+
+            "category":
+                str(
+                    display_category
+                ).replace(
+                    "_",
+                    " "
+                ).title(),
+
+            "address":
+                (
+                    tags.get(
+                        "addr:full"
+                    )
+                    or
+                    tags.get(
+                        "addr:street"
+                    )
+                    or
+                    tags.get(
+                        "addr:city"
+                    )
+                    or
+                    ""
+                ),
+
+            "phone":
+                (
+                    tags.get(
+                        "phone"
+                    )
+                    or
+                    tags.get(
+                        "contact:phone"
+                    )
+                    or
+                    ""
+                ),
+
+            "website":
+                (
+                    tags.get(
+                        "website"
+                    )
+                    or
+                    tags.get(
+                        "contact:website"
+                    )
+                    or
+                    ""
+                ),
+
+            "opening_hours":
+                tags.get(
+                    "opening_hours",
+                    ""
+                ),
+
+            "source":
+                "OpenStreetMap"
+        })
+
+    # --------------------------------------------------------
+    # SORT
+    # --------------------------------------------------------
 
     results.sort(
-        key=lambda item: float(
-            item.get(
+        key=lambda x:
+            x.get(
                 "distance_m",
-                10**9,
+                999999999
             )
-        )
     )
 
-    results = results[:40]
-
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
+    final_results = results[:40]
     print(
         f"[Nearby] Found "
-        f"{len(results)} {category} "
-        f"places within "
-        f"{radius / 1000:.0f} km"
+        f"{len(final_results)} "
+        f"{category} places within "
+        f"{radius / 1000:.1f} km"
     )
 
-    # IMPORTANT:
-    # Return 200 even when external provider is temporarily
-    # empty. This keeps frontend from showing "service unavailable"
-    # for every Overpass outage.
     return JsonResponse(
         {
             "success": True,
-            "results": results,
-            "count": len(results),
-            "radius_m": radius,
-            "radius_km": radius / 1000,
-            "category": category,
-            "latitude": lat,
-            "longitude": lon,
+
+            "results":
+                final_results,
+
+            "count":
+                len(final_results),
+
+            "radius_km":
+                round(
+                    radius / 1000,
+                    1
+                ),
+
+            "category":
+                category,
+
             "center": {
                 "lat": lat,
-                "lon": lon,
+                "lon": lon
             },
-            "scope": (
-                "Delhi NCR"
-                if _in_ncr(lat, lon)
-                else "Current location"
-            ),
-            "source": (
-                "GoPlan dataset + "
-                "OpenStreetMap + "
-                "fallback providers"
-            ),
-        }
-    )
 
+            "source":
+                "GoPlan dataset + OpenStreetMap"
+        },
+        status=200
+    )
 
 # ============================================================
 # SMART CONNECT
@@ -2163,112 +2506,157 @@ def smart_connect(request):
 # WEATHER
 # ============================================================
 
+# ============================================================
+# WEATHER
+# ============================================================
+
 def weather(request):
-
     try:
-
-        lat = float(
-            request.GET["lat"]
-        )
-
-        lon = float(
-            request.GET["lon"]
-        )
-
-    except (
-        KeyError,
-        TypeError,
-        ValueError,
-    ):
-
+        lat = float(request.GET.get("lat"))
+        lon = float(request.GET.get("lon"))
+    except (TypeError, ValueError):
         return JsonResponse(
             {
-                "error": (
-                    "Invalid coordinates"
-                )
+                "success": False,
+                "error": "Invalid coordinates"
             },
-            status=400,
+            status=400
         )
 
-    if not (
-        -90 <= lat <= 90
-        and -180 <= lon <= 180
-    ):
-
+    # Never call weather API with fake 0,0 coordinates
+    if lat == 0 and lon == 0:
         return JsonResponse(
             {
-                "error": (
-                    "Invalid geographic coordinates"
-                )
+                "success": False,
+                "error": "Invalid location coordinates"
             },
-            status=400,
+            status=400
         )
 
-    params = urllib.parse.urlencode(
-        {
-            "latitude": lat,
-            "longitude": lon,
-            "current": (
-                "temperature_2m,"
-                "relative_humidity_2m,"
-                "apparent_temperature,"
-                "precipitation,"
-                "weather_code,"
-                "wind_speed_10m,"
-                "visibility"
-            ),
-            "daily": (
-                "weather_code,"
-                "temperature_2m_max,"
-                "temperature_2m_min,"
-                "precipitation_probability_max,"
-                "wind_speed_10m_max,"
-                "sunrise,"
-                "sunset"
-            ),
-            "forecast_days": 7,
-            "timezone": "auto",
-        }
-    )
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Coordinates out of range"
+            },
+            status=400
+        )
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": (
+            "temperature_2m,"
+            "relative_humidity_2m,"
+            "apparent_temperature,"
+            "precipitation,"
+            "weather_code,"
+            "wind_speed_10m,"
+            "visibility"
+        ),
+        "daily": (
+            "weather_code,"
+            "temperature_2m_max,"
+            "temperature_2m_min,"
+            "precipitation_probability_max,"
+            "wind_speed_10m_max,"
+            "sunrise,"
+            "sunset"
+        ),
+        "forecast_days": 7,
+        "timezone": "auto"
+    }
 
     try:
-
-        data = _json_request(
-            f"{WEATHER_URL}?{params}",
-            timeout=10,
+        response = requests.get(
+            WEATHER_URL,
+            params=params,
+            headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "application/json"
+            },
+            timeout=10
         )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if not isinstance(data, dict):
+            raise ValueError(
+                "Weather API returned invalid data"
+            )
 
         data["goplan"] = {
             "scope": (
                 "Delhi NCR"
-                if _in_ncr(
-                    lat,
-                    lon,
-                )
+                if _in_ncr(lat, lon)
                 else "Current location"
             ),
-            "updated_at": (
-                datetime.utcnow()
-                .isoformat(
+            "latitude": lat,
+            "longitude": lon,
+            "updated_at":
+                datetime.utcnow().isoformat(
                     timespec="seconds"
-                )
-                + "Z"
-            ),
+                ) + "Z"
         }
 
         return JsonResponse(
-            data
+            data,
+            status=200
+        )
+
+    except requests.RequestException as error:
+
+        print(
+            "[Weather] API request failed:",
+            error
+        )
+
+        # Always return JSON instead of Django HTML 502
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Weather service temporarily unavailable.",
+                "latitude": lat,
+                "longitude": lon
+            },
+            status=200
+        )
+
+    except ValueError as error:
+
+        print(
+            "[Weather] Invalid response:",
+            error
+        )
+
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Weather service returned invalid data.",
+                "latitude": lat,
+                "longitude": lon
+            },
+            status=200
         )
 
     except Exception as error:
 
-        return JsonResponse(
-            {
-                "error": str(error)
-            },
-            status=502,
+        print(
+            "[Weather] Unexpected error:",
+            error
         )
 
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Unable to load weather right now.",
+                "latitude": lat,
+                "longitude": lon
+            },
+            status=200
+        )
 
 # ============================================================
 # AWARENESS
