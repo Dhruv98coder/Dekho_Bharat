@@ -1,0 +1,268 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>GoPlan · Native Language AI</title>
+
+    <link rel="stylesheet" href="{% static 'native_language/css/app_shell.css' %}">
+
+    <link rel="stylesheet"
+          href="{% static 'native_language/css/style.css' %}">
+
+<style>main.container{margin-left:246px;position:relative;z-index:1}@media(max-width:900px){main.container{margin-left:0;padding-top:78px}}.native-ai-fab{position:fixed;right:20px;bottom:20px;z-index:4100;border:0;border-radius:999px;padding:12px 16px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-weight:800;box-shadow:0 14px 30px rgba(37,99,235,.25)}.native-ai-drawer{position:fixed;right:20px;bottom:76px;z-index:4090;width:min(410px,calc(100vw - 30px));height:min(640px,calc(100vh - 100px));background:#fff;border:1px solid #dfe6f2;border-radius:18px;box-shadow:0 25px 70px rgba(24,45,80,.2);overflow:hidden;opacity:0;pointer-events:none;transform:translateY(12px);transition:.2s}.native-ai-drawer.show{opacity:1;pointer-events:auto;transform:none}.native-ai-drawer iframe{width:100%;height:100%;border:0}</style>
+
+</head>
+
+
+<body class="gp-module-page" data-module="native">
+
+{% include "includes/app_sidebar.html" %}
+
+<main class="container">
+    <a class="module-back" href="/">← Back to GoPlan</a>
+
+
+    <!-- =========================================
+         HERO
+    ========================================== -->
+
+    <section class="hero">
+
+        <div class="tag">
+            🇮🇳 INDIAN LANGUAGE AI
+        </div>
+
+
+        <h1>
+            Speak Naturally.
+            <br>
+            <span>Understand Globally.</span>
+        </h1>
+
+
+        <p class="subtitle">
+            Type or speak naturally in your native language.
+            Native Language AI automatically detects your language
+            and translates it into English.
+        </p>
+
+    </section>
+
+
+
+    <!-- =========================================
+         TRANSLATOR CARD
+    ========================================== -->
+
+    <section class="translator-card">
+
+
+        <!-- =====================================
+             CSRF TOKEN
+        ====================================== -->
+
+        <form id="csrf-form" style="display: none;">
+
+            {% csrf_token %}
+
+        </form>
+
+
+
+        <!-- =====================================
+             INPUT SECTION
+        ====================================== -->
+
+        <div class="input-section">
+
+
+            <!-- HEADER -->
+
+            <div class="section-header">
+
+                <label for="textBox">
+                    Your message
+                </label>
+
+
+                <span id="detectedLanguage">
+                    Language: Not detected
+                </span>
+
+            </div>
+
+
+
+            <!-- TEXT BOX -->
+
+            <textarea
+                id="textBox"
+                placeholder="Type something in Hindi, English, Tamil, Bengali, Marathi..."
+                autocomplete="off"
+                spellcheck="false"
+            ></textarea>
+
+
+
+            <!-- =================================
+                 INPUT BUTTONS
+            ================================== -->
+
+            <div class="input-actions">
+
+
+                <!-- MICROPHONE -->
+
+                <button
+                    id="voiceBtn"
+                    class="secondary-btn"
+                    type="button"
+                >
+                    🎤 Speak
+                </button>
+
+
+
+                <!-- DETECT -->
+
+                <button
+                    id="detectBtn"
+                    class="dark-btn"
+                    type="button"
+                >
+                    🌐 Detect Language
+                </button>
+
+            </div>
+
+
+
+            <p class="auto-info">
+                ✨ Translation happens automatically
+                after you stop typing.
+            </p>
+
+
+        </div>
+
+
+
+        <!-- =====================================
+             ARROW
+        ====================================== -->
+
+        <div class="arrow">
+            ↓
+        </div>
+
+
+
+        <!-- =====================================
+             OUTPUT SECTION
+        ====================================== -->
+
+        <div class="output-section">
+
+
+            <!-- HEADER -->
+
+            <div class="section-header">
+
+                <label for="englishOutput" id="outputLabel">
+                    Translation
+                </label>
+
+
+                <span id="targetLanguageLabel">
+                    ↔ Hindi ↔ English
+                </span>
+                <button class="swap-language" id="swapLanguageBtn" type="button">⇄ Swap direction</button>
+
+            </div>
+
+
+
+            <!-- =================================
+                 TRANSLATION OUTPUT
+            ================================== -->
+
+            <div
+                id="englishOutput"
+                class="output-box"
+            >
+                Your English translation will appear here...
+            </div>
+
+
+
+            <!-- =================================
+                 TRANSLATE BUTTON
+            ================================== -->
+
+            <button
+                id="translateBtn"
+                class="translate-btn"
+                type="button"
+            >
+                Translate Now →
+            </button>
+
+
+
+            <!-- =================================
+                 SPEAKER
+            ================================== -->
+
+            <button
+                id="speakTranslationBtn"
+                class="listen-btn"
+                type="button"
+            >
+                🔊 Listen to Translation
+            </button>
+
+
+            <p class="voice-info">
+                🔊 Tap the button to hear your English translation.
+            </p>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         FOOTER
+    ========================================== -->
+
+    <footer class="footer">
+
+        <p>
+            🇮🇳 Built for Indian languages
+        </p>
+
+    </footer>
+
+
+</main>
+
+<!-- =========================================
+     JAVASCRIPT
+========================================== -->
+
+<script src="{% static 'native_language/js/script.js' %}"></script>
+
+
+</body>
+
+</html>

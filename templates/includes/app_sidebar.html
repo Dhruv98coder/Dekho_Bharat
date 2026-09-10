@@ -1,0 +1,32 @@
+<aside class="gp-sidebar" id="gpSidebar">
+  <div class="gp-sidebar-head">
+    <a class="gp-brand" href="/"><span class="gp-brand-mark">✦</span><span><b>Dekho Bharat</b><small>GoPlan · Your places</small></span></a>
+    <button class="gp-side-close" type="button" onclick="toggleGpSidebar(false)">×</button>
+  </div>
+  <nav class="gp-side-nav">
+    <a class="gp-nav-link {% if active_module == 'home' %}active{% endif %}" href="/"><span>⌂</span><div><b>GoPlan</b><small>Discover places</small></div></a>
+    <a class="gp-nav-link {% if active_module == 'map' %}active{% endif %}" href="/map/"><span>⌖</span><div><b>Intelligent Map</b><small>Live location & routes</small></div></a>
+    <a class="gp-nav-link {% if active_module == 'native' %}active{% endif %}" href="/native/"><span>अ</span><div><b>Native Language</b><small>Speak & translate</small></div></a>
+    <a class="gp-nav-link {% if active_module == 'shristi' %}active{% endif %}" href="/shristi/"><span>✦</span><div><b>Shristi AI</b><small>Ask your travel guide</small></div></a>
+    <a class="gp-nav-link {% if active_module == 'metro' %}active{% endif %}" href="/metro/"><span>🚇</span><div><b>Delhi Metro</b><small>Plan your journey</small></div></a>
+    <a class="gp-nav-link {% if active_module == 'history' %}active{% endif %}" href="/trips/"><span>▣</span><div><b>Trip history</b><small>Your saved routes</small></div></a>
+    <button class="gp-nav-link" type="button" onclick="window.dispatchEvent(new Event('open-gp-sos'))"><span>SOS</span><div><b>SOS</b><small>Emergency help</small></div></button>
+  </nav>
+  <div class="gp-sidebar-note">Your plans stay in GoPlan. Add a route to build your travel history.</div>
+</aside>
+<button class="gp-menu-toggle" type="button" onclick="toggleGpSidebar()" aria-label="Toggle GoPlan menu">☰</button>
+<div class="gp-sidebar-backdrop" id="gpSidebarBackdrop" onclick="toggleGpSidebar(false)"></div>
+<script>
+function toggleGpSidebar(force) {
+  const b = document.body;
+  const open = force === undefined ? !b.classList.contains('gp-menu-open') : force;
+  b.classList.toggle('gp-menu-open', open);
+  b.classList.toggle('menu-open', open);
+}
+window.toggleMenu = toggleGpSidebar;
+window.closeMenu = () => toggleGpSidebar(false);
+window.addEventListener('open-gp-sos', () => {
+  if (typeof showPanel === 'function') showPanel('sos');
+  else window.location.href = '/?panel=sos';
+});
+</script>
